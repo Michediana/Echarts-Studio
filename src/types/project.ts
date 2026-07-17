@@ -50,6 +50,7 @@ export interface UIState {
   mode: "basic" | "advanced";
   theme: "light" | "dark";
   language: Language;
+  centerView: "chart" | "data";
 }
 
 export interface ProjectDocument {
@@ -91,6 +92,7 @@ export const DEFAULT_UI_STATE: UIState = {
   mode: "advanced",
   theme: "dark",
   language: detectSystemLanguage(),
+  centerView: "chart",
 };
 
 export const SCHEMA_VERSION = "1.0.0";

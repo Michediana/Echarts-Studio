@@ -1,11 +1,14 @@
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { BarChart3, Table } from "lucide-react";
 import { Toolbar } from "@/components/layout/Toolbar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import PropertyInspector from "@/components/inspector/PropertyInspector";
 import BottomPanel from "@/components/layout/BottomPanel";
 import ChartPreview from "@/components/chart/ChartPreview";
+import DataEditor from "@/components/data/DataEditor";
 import CommandPalette from "@/components/layout/CommandPalette";
 import { useUIStore } from "@/stores/uiStore";
+import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 
 function HorizontalResizeHandle() {
@@ -17,8 +20,13 @@ function HorizontalResizeHandle() {
 }
 
 export default function AppShell() {
+  const t = useT();
   const theme = useUIStore((s) => s.theme);
+  const centerView = useUIStore((s) => s.centerView);
+  const setCenterView = useUIStore((s) => s.setCenterView);
   const bottomPanelOpen = useUIStore((s) => s.bottomPanelOpen);
+
+  const showBottomPanel = bottomPanelOpen && centerView === "chart";
 
   return (
     <div
@@ -39,11 +47,47 @@ export default function AppShell() {
 
           <Panel id="center" defaultSize={55} minSize={30}>
             <div className="flex h-full flex-col">
-              <div className={cn("min-h-0 p-2", bottomPanelOpen ? "flex-1" : "h-full")}>
-                <ChartPreview />
+              {/* Center view tabs */}
+              <div className="flex items-center gap-1 border-b bg-muted/30 px-2 py-1">
+                <button
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                    centerView === "chart"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                  onClick={() => setCenterView("chart")}
+                >
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  {t("sidebar.tabTemplates")}
+                </button>
+                <button
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                    centerView === "data"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                  onClick={() => setCenterView("data")}
+                >
+                  <Table className="h-3.5 w-3.5" />
+                  {t("sidebar.tabData")}
+                </button>
               </div>
 
-              {bottomPanelOpen && (
+              {/* Center content */}
+              {centerView === "chart" ? (
+                <div className={cn("min-h-0 p-2", showBottomPanel ? "flex-1" : "h-full")}>
+                  <ChartPreview />
+                </div>
+              ) : (
+                <div className="min-h-0 flex-1">
+                  <DataEditor />
+                </div>
+              )}
+
+              {/* Bottom panel (only in chart view) */}
+              {showBottomPanel && (
                 <div className="h-[250px] min-h-[100px] border-t border-border">
                   <BottomPanel />
                 </div>

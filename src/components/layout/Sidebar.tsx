@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useProjectStore } from "@/stores/projectStore";
+import { useUIStore } from "@/stores/uiStore";
 import { useT } from "@/lib/i18n/context";
 import { chartTemplates, type ChartTemplate } from "@/templates/index";
 import type { DatasetDocument, ProjectDocument } from "@/types/project";
@@ -263,6 +264,11 @@ interface DataTabProps {
 function DataTab({ datasets, onAddDataset }: DataTabProps) {
   const t = useT();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const setCenterView = useUIStore((s) => s.setCenterView);
+
+  const openDataPanel = useCallback(() => {
+    setCenterView("data");
+  }, [setCenterView]);
 
   const handleAddBlank = useCallback(() => {
     const now = new Date().toISOString();
@@ -279,7 +285,8 @@ function DataTab({ datasets, onAddDataset }: DataTabProps) {
       updatedAt: now,
     };
     onAddDataset(dataset);
-  }, [datasets.length, onAddDataset]);
+    openDataPanel();
+  }, [datasets.length, onAddDataset, openDataPanel]);
 
   const handleImport = useCallback(
     async (accept: string) => {
@@ -296,11 +303,12 @@ function DataTab({ datasets, onAddDataset }: DataTabProps) {
         );
         const parsed = JSON.parse(content) as DatasetDocument;
         onAddDataset(parsed);
+        openDataPanel();
       } catch (err) {
         console.error("Failed to import dataset:", err);
       }
     },
-    [onAddDataset],
+    [onAddDataset, openDataPanel],
   );
 
   return (
@@ -348,7 +356,11 @@ function DataTab({ datasets, onAddDataset }: DataTabProps) {
               className={`cursor-pointer transition-colors hover:bg-accent ${
                 selectedId === ds.id ? "border-primary bg-accent" : ""
               }`}
-              onClick={() => setSelectedId(ds.id === selectedId ? null : ds.id)}
+              onClick={() => {
+                const next = ds.id === selectedId ? null : ds.id;
+                setSelectedId(next);
+                if (next) openDataPanel();
+              }}
             >
               <CardContent className="flex items-center gap-3 p-2.5">
                 <Database className="h-4 w-4 shrink-0 text-muted-foreground" />

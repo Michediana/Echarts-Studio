@@ -11,6 +11,7 @@ interface UIStore extends UIState {
   setTheme: (theme: UIState["theme"]) => void;
   toggleTheme: () => void;
   setLanguage: (lang: UIState["language"]) => void;
+  setCenterView: (view: UIState["centerView"]) => void;
   setSidebarWidth: (width: number) => void;
   setInspectorWidth: (width: number) => void;
   setBottomPanelHeight: (height: number) => void;
@@ -44,6 +45,7 @@ export const useUIStore = create<UIStore>()(
         } as Partial<UIStore>)),
 
       setLanguage: (lang) => set({ language: lang } as Partial<UIStore>),
+      setCenterView: (view) => set({ centerView: view } as Partial<UIStore>),
 
       setSidebarWidth: (width) => set({ sidebarWidth: width } as Partial<UIStore>),
       setInspectorWidth: (width) => set({ inspectorWidth: width } as Partial<UIStore>),
@@ -84,6 +86,7 @@ export const useUIStore = create<UIStore>()(
         theme: state.theme,
         mode: state.mode,
         language: state.language,
+        centerView: state.centerView,
         sidebarWidth: state.sidebarWidth,
         inspectorWidth: state.inspectorWidth,
         bottomPanelHeight: state.bottomPanelHeight,
