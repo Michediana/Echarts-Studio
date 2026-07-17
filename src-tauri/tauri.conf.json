@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "echarts-desktop",
+  "productName": "ECharts Studio",
   "version": "0.1.0",
-  "identifier": "com.michelediana.echarts-desktop",
+  "identifier": "com.echarts-studio.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,9 +12,13 @@
   "app": {
     "windows": [
       {
-        "title": "echarts-desktop",
-        "width": 800,
-        "height": 600
+        "title": "ECharts Studio",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 700,
+        "decorations": true,
+        "resizable": true
       }
     ],
     "security": {
