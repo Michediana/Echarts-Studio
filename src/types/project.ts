@@ -20,6 +20,26 @@ export interface DatasetDocument {
   updatedAt: string;
 }
 
+export type SeriesType = "bar" | "line" | "scatter" | "pie" | "radar";
+export type ChartCategory = "cartesian" | "pie" | "radar";
+
+export interface SeriesBinding {
+  id: string;
+  columnId: string;
+  name: string;
+  color?: string;
+}
+
+export interface DatasetBinding {
+  id: string;
+  datasetId: string;
+  chartType: SeriesType;
+  xAxisColumnId: string | null;
+  series: SeriesBinding[];
+  pieNameColumnId: string | null;
+  pieValueColumnId: string | null;
+}
+
 export interface TransformDocument {
   id: string;
   datasetId: string;
@@ -58,6 +78,7 @@ export interface ProjectDocument {
   version: string;
   metadata: ProjectMetadata;
   datasets: DatasetDocument[];
+  bindings: DatasetBinding[];
   transforms: TransformDocument[];
   chart: {
     option: Record<string, unknown>;

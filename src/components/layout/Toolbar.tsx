@@ -38,11 +38,14 @@ import { useLanguage } from "@/lib/i18n/context";
 import { LANGUAGES } from "@/lib/i18n/translations";
 import { useProjectStore } from "@/stores/projectStore";
 import { useUIStore } from "@/stores/uiStore";
-import { chartTemplates } from "@/templates/index";
+import type { SeriesType } from "@/types/project";
 
-const CHART_TYPES = [
-  { value: "_none", label: "Select chart type" },
-  ...chartTemplates.map((t) => ({ value: t.id, label: t.name })),
+const CHART_TYPE_OPTIONS: { value: SeriesType; label: string }[] = [
+  { value: "bar", label: "Bar" },
+  { value: "line", label: "Line" },
+  { value: "scatter", label: "Scatter" },
+  { value: "pie", label: "Pie" },
+  { value: "radar", label: "Radar" },
 ];
 
 interface ToolbarButtonProps {
@@ -81,12 +84,16 @@ export function Toolbar() {
   const openProject = useProjectStore((s) => s.openProject);
   const saveProject = useProjectStore((s) => s.saveProject);
   const saveProjectAs = useProjectStore((s) => s.saveProjectAs);
+  const setChartType = useProjectStore((s) => s.setChartType);
 
   const theme = useUIStore((s) => s.theme);
   const mode = useUIStore((s) => s.mode);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
   const toggleMode = useUIStore((s) => s.toggleMode);
   const openCommandPalette = useUIStore((s) => s.openCommandPalette);
+
+  const bindings = currentProject?.bindings ?? [];
+  const activeChartType = bindings.length > 0 ? bindings[0].chartType : null;
 
   const handleNew = useCallback(() => {
     createProject();
@@ -150,6 +157,13 @@ export function Toolbar() {
 
   const hasProject = currentProject !== null;
 
+  const handleChartTypeChange = useCallback(
+    (value: string) => {
+      setChartType(value as SeriesType);
+    },
+    [setChartType],
+  );
+
   return (
     <TooltipProvider delayDuration={300}>
       <div className="flex h-11 shrink-0 items-center border-b bg-background px-2 gap-1">
@@ -190,12 +204,16 @@ export function Toolbar() {
 
         {/* Center section: Chart type + Undo/Redo */}
         <div className="flex-1 flex items-center justify-center gap-1">
-          <Select disabled={!hasProject}>
-            <SelectTrigger className="h-7 w-[200px] text-xs">
-              <SelectValue placeholder="Select chart type" />
+          <Select
+            disabled={!hasProject}
+            value={activeChartType ?? ""}
+            onValueChange={handleChartTypeChange}
+          >
+            <SelectTrigger className="h-7 w-[140px] text-xs">
+              <SelectValue placeholder={t("toolbar.selectChartType")} />
             </SelectTrigger>
             <SelectContent>
-              {CHART_TYPES.map((ct) => (
+              {CHART_TYPE_OPTIONS.map((ct) => (
                 <SelectItem key={ct.value} value={ct.value}>
                   <span className="text-xs">{ct.label}</span>
                 </SelectItem>

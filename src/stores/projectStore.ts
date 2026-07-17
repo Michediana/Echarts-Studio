@@ -6,6 +6,7 @@ import type {
   DatasetDocument,
   DatasetColumn,
   DatasetRow,
+  DatasetBinding,
 } from "@/types/project";
 
 const SAMPLE_MONTHS = [
@@ -116,6 +117,27 @@ function createDefaultProject(): ProjectDocument {
   const now = new Date().toISOString();
   const dataset = createSampleDataset();
 
+  const monthCol = dataset.columns.find((c) => c.name === "month");
+  const revenueCol = dataset.columns.find((c) => c.name === "revenue");
+  const costCol = dataset.columns.find((c) => c.name === "cost");
+
+  const binding: DatasetBinding = {
+    id: uuid(),
+    datasetId: dataset.id,
+    chartType: "bar",
+    xAxisColumnId: monthCol?.id ?? null,
+    series: [
+      ...(revenueCol
+        ? [{ id: uuid(), columnId: revenueCol.id, name: "Revenue", color: "#5470c6" }]
+        : []),
+      ...(costCol
+        ? [{ id: uuid(), columnId: costCol.id, name: "Cost", color: "#91cc75" }]
+        : []),
+    ],
+    pieNameColumnId: null,
+    pieValueColumnId: null,
+  };
+
   return {
     id: uuid(),
     version: "1.0.0",
@@ -128,6 +150,7 @@ function createDefaultProject(): ProjectDocument {
       schemaVersion: "1.0.0",
     },
     datasets: [dataset],
+    bindings: [binding],
     transforms: [],
     chart: {
       option: createDefaultChartOption(dataset),
@@ -148,10 +171,13 @@ interface ProjectStore {
   saveProject: () => Promise<void>;
   saveProjectAs: (path: string) => Promise<void>;
   updateChartOption: (option: Record<string, unknown>) => void;
+  applyTemplate: (option: Record<string, unknown>) => void;
   updateMetadata: (metadata: Partial<ProjectDocument["metadata"]>) => void;
   addDataset: (dataset: DatasetDocument) => void;
   removeDataset: (datasetId: string) => void;
   updateDataset: (datasetId: string, dataset: Partial<DatasetDocument>) => void;
+  updateDatasetBinding: (datasetId: string, binding: DatasetBinding) => void;
+  setChartType: (chartType: DatasetBinding["chartType"]) => void;
   setProject: (project: ProjectDocument, filePath?: string | null) => void;
   markDirty: () => void;
   markClean: () => void;
@@ -193,6 +219,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     try {
       const content = await invoke<string>("read_project", { path });
       const doc = JSON.parse(content) as ProjectDocument;
+      if (!doc.bindings) doc.bindings = [];
       set({
         currentProject: doc,
         currentFilePath: path,
@@ -275,6 +302,24 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({
       currentProject: {
         ...currentProject,
+        bindings: [],
+        chart: {
+          ...currentProject.chart,
+          option,
+        },
+      },
+      isDirty: true,
+    });
+  },
+
+  applyTemplate: (option: Record<string, unknown>) => {
+    const { currentProject } = get();
+    if (!currentProject) return;
+
+    set({
+      currentProject: {
+        ...currentProject,
+        bindings: [],
         chart: {
           ...currentProject.chart,
           option,
@@ -352,6 +397,75 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       },
       isDirty: true,
     });
+  },
+
+  updateDatasetBinding: (datasetId: string, binding: DatasetBinding) => {
+    const { currentProject } = get();
+    if (!currentProject) return;
+
+    const bindings = currentProject.bindings ?? [];
+    const existing = bindings.findIndex((b) => b.datasetId === datasetId);
+    const updatedBindings =
+      existing >= 0
+        ? bindings.map((b, i) => (i === existing ? binding : b))
+        : [...bindings, binding];
+
+    set({
+      currentProject: {
+        ...currentProject,
+        bindings: updatedBindings,
+        metadata: {
+          ...currentProject.metadata,
+          updatedAt: new Date().toISOString(),
+        },
+      },
+      isDirty: true,
+    });
+  },
+
+  setChartType: (chartType) => {
+    const { currentProject } = get();
+    if (!currentProject) return;
+
+    const bindings = currentProject.bindings ?? [];
+    if (bindings.length > 0) {
+      const first = bindings[0];
+      set({
+        currentProject: {
+          ...currentProject,
+          bindings: [{ ...first, chartType }],
+          metadata: {
+            ...currentProject.metadata,
+            updatedAt: new Date().toISOString(),
+          },
+        },
+        isDirty: true,
+      });
+    } else {
+      const dataset = currentProject.datasets[0];
+      if (dataset) {
+        const newBinding: DatasetBinding = {
+          id: uuid(),
+          datasetId: dataset.id,
+          chartType,
+          xAxisColumnId: dataset.columns[0]?.id ?? null,
+          series: [],
+          pieNameColumnId: null,
+          pieValueColumnId: null,
+        };
+        set({
+          currentProject: {
+            ...currentProject,
+            bindings: [newBinding],
+            metadata: {
+              ...currentProject.metadata,
+              updatedAt: new Date().toISOString(),
+            },
+          },
+          isDirty: true,
+        });
+      }
+    }
   },
 
   setProject: (project: ProjectDocument, filePath: string | null = null) => {

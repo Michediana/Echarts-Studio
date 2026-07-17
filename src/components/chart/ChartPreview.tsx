@@ -3,6 +3,7 @@ import ReactECharts from "echarts-for-react";
 import { RefreshCw, Maximize2, Minimize2, FileImage, AlertCircle } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useUIStore } from "@/stores/uiStore";
+import { datasetToOption } from "@/lib/data/datasetToOption";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 
@@ -18,10 +19,18 @@ export default function ChartPreview() {
   const currentProject = useProjectStore((s) => s.currentProject);
   const theme = useUIStore((s) => s.theme);
 
-  const chartOption = useMemo(
-    () => currentProject?.chart?.option ?? EMPTY_OPTION,
-    [currentProject?.chart?.option],
-  );
+  const chartOption = useMemo(() => {
+    if (!currentProject) return EMPTY_OPTION;
+    const bindings = currentProject.bindings ?? [];
+    if (bindings.length > 0) {
+      const binding = bindings[0];
+      const dataset = currentProject.datasets.find((d) => d.id === binding.datasetId);
+      if (dataset && binding.series.length > 0) {
+        return datasetToOption(dataset, binding);
+      }
+    }
+    return currentProject.chart?.option ?? EMPTY_OPTION;
+  }, [currentProject]);
   const renderer = currentProject?.chart?.renderer ?? "canvas";
   const echartsTheme = theme === "dark" ? "dark" : undefined;
 

@@ -22,6 +22,7 @@ type TranslationKeys = {
   "toolbar.switchToDarkTheme": string;
   "toolbar.exportChartAsImage": string;
   "toolbar.commandPalette": string;
+  "toolbar.selectChartType": string;
 
   // Sidebar
   "sidebar.tabProject": string;
@@ -166,6 +167,17 @@ type TranslationKeys = {
   "dataEditor.rowsColumnsFooter": string;
   "dataEditor.importedRows": string;
   "dataEditor.failedParseCsv": string;
+  "dataEditor.bindingTitle": string;
+  "dataEditor.bindingSeries": string;
+  "dataEditor.bindingEnable": string;
+  "dataEditor.bindingHint": string;
+  "dataEditor.bindingDisable": string;
+  "dataEditor.bindingSelectColumn": string;
+  "dataEditor.bindingNamePlaceholder": string;
+  "dataEditor.bindingAddSeries": string;
+  "dataEditor.bindingPieName": string;
+  "dataEditor.bindingPieValue": string;
+  "dataEditor.bindingAddIndicator": string;
 
   // ExportDialog
   "export.title": string;
@@ -204,6 +216,7 @@ export const translations: Record<Language, TranslationKeys> = {
     "toolbar.switchToDarkTheme": "Switch to dark theme",
     "toolbar.exportChartAsImage": "Export chart as image",
     "toolbar.commandPalette": "Command Palette (⌘K)",
+    "toolbar.selectChartType": "Chart type",
 
     // Sidebar
     "sidebar.tabProject": "Project",
@@ -348,6 +361,17 @@ export const translations: Record<Language, TranslationKeys> = {
     "dataEditor.rowsColumnsFooter": "rows · columns",
     "dataEditor.importedRows": "Imported rows from",
     "dataEditor.failedParseCsv": "Failed to parse CSV file",
+    "dataEditor.bindingTitle": "Map Data to Chart",
+    "dataEditor.bindingSeries": "series",
+    "dataEditor.bindingEnable": "Link to chart",
+    "dataEditor.bindingHint": "Connect this dataset to the chart — columns become axes and series.",
+    "dataEditor.bindingDisable": "Unlink",
+    "dataEditor.bindingSelectColumn": "Select column",
+    "dataEditor.bindingNamePlaceholder": "Label",
+    "dataEditor.bindingAddSeries": "Add series",
+    "dataEditor.bindingPieName": "Name",
+    "dataEditor.bindingPieValue": "Value",
+    "dataEditor.bindingAddIndicator": "Add indicator",
 
     // ExportDialog
     "export.title": "Export",
@@ -385,6 +409,7 @@ export const translations: Record<Language, TranslationKeys> = {
     "toolbar.switchToDarkTheme": "Tema scuro",
     "toolbar.exportChartAsImage": "Esporta grafico come immagine",
     "toolbar.commandPalette": "Palette Comandi (⌘K)",
+    "toolbar.selectChartType": "Tipo di grafico",
 
     // Sidebar
     "sidebar.tabProject": "Progetto",
@@ -529,6 +554,17 @@ export const translations: Record<Language, TranslationKeys> = {
     "dataEditor.rowsColumnsFooter": "righe · colonne",
     "dataEditor.importedRows": "Importate righe da",
     "dataEditor.failedParseCsv": "Impossibile analizzare il file CSV",
+    "dataEditor.bindingTitle": "Collega Dati al Grafico",
+    "dataEditor.bindingSeries": "serie",
+    "dataEditor.bindingEnable": "Collega al grafico",
+    "dataEditor.bindingHint": "Collega questo dataset al grafico — le colonne diventano assi e serie.",
+    "dataEditor.bindingDisable": "Scollega",
+    "dataEditor.bindingSelectColumn": "Seleziona colonna",
+    "dataEditor.bindingNamePlaceholder": "Etichetta",
+    "dataEditor.bindingAddSeries": "Aggiungi serie",
+    "dataEditor.bindingPieName": "Nome",
+    "dataEditor.bindingPieValue": "Valore",
+    "dataEditor.bindingAddIndicator": "Aggiungi indicatore",
 
     // ExportDialog
     "export.title": "Esporta",

@@ -70,7 +70,7 @@ export function Sidebar() {
   const currentProject = useProjectStore((s) => s.currentProject);
   const updateMetadata = useProjectStore((s) => s.updateMetadata);
   const addDataset = useProjectStore((s) => s.addDataset);
-  const updateChartOption = useProjectStore((s) => s.updateChartOption);
+  const applyTemplate = useProjectStore((s) => s.applyTemplate);
 
   return (
     <div className="flex h-full flex-col bg-sidebar-background">
@@ -110,7 +110,7 @@ export function Sidebar() {
 
         <TabsContent value="templates" className="flex-1 mt-0 overflow-hidden">
           <ScrollArea className="h-full">
-            <TemplatesTab onApplyTemplate={updateChartOption} />
+            <TemplatesTab onApplyTemplate={applyTemplate} />
           </ScrollArea>
         </TabsContent>
       </Tabs>

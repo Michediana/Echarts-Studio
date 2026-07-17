@@ -7,6 +7,8 @@ import type {
   DatasetColumn,
   DatasetRow,
   ColumnType,
+  DatasetBinding,
+  SeriesBinding,
 } from "@/types/project";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +30,11 @@ import {
   Upload,
   Table,
   Database,
+  Link2,
+  Unlink,
+  ChevronDown,
+  ChevronRight,
+  BarChart3,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/context";
 
@@ -83,6 +90,7 @@ export default function DataEditor() {
   const updateDataset = useProjectStore((s) => s.updateDataset);
   const addDataset = useProjectStore((s) => s.addDataset);
   const removeDataset = useProjectStore((s) => s.removeDataset);
+  const updateDatasetBinding = useProjectStore((s) => s.updateDatasetBinding);
 
   const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null);
   const [editingCell, setEditingCell] = useState<CellPosition | null>(null);
@@ -91,6 +99,7 @@ export default function DataEditor() {
   const [headerName, setHeaderName] = useState("");
   const [sortState, setSortState] = useState<SortState | null>(null);
   const [newColName, setNewColName] = useState("");
+  const [bindingOpen, setBindingOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -174,6 +183,90 @@ export default function DataEditor() {
       updateDataset(updated.id, updated);
     },
     [currentProject, updateDataset],
+  );
+
+  const currentBinding = useMemo<DatasetBinding | null>(() => {
+    if (!currentProject || !dataset) return null;
+    return currentProject.bindings?.find((b) => b.datasetId === dataset.id) ?? null;
+  }, [currentProject, dataset]);
+
+  const hasBinding = currentBinding !== null && (
+    currentBinding.series.length > 0 ||
+    currentBinding.pieNameColumnId || currentBinding.pieValueColumnId
+  );
+
+  const isPie = currentBinding?.chartType === "pie";
+  const isRadar = currentBinding?.chartType === "radar";
+
+  const toggleBinding = useCallback(() => {
+    if (!dataset || !currentProject) return;
+    if (currentBinding) {
+      updateDatasetBinding(dataset.id, { ...currentBinding, series: [], pieNameColumnId: null, pieValueColumnId: null });
+    } else {
+      updateDatasetBinding(dataset.id, {
+        id: uuid(),
+        datasetId: dataset.id,
+        chartType: "bar",
+        xAxisColumnId: dataset.columns[0]?.id ?? null,
+        series: [],
+        pieNameColumnId: null,
+        pieValueColumnId: null,
+      });
+    }
+  }, [dataset, currentProject, currentBinding, updateDatasetBinding]);
+
+  const setXAxisColumn = useCallback(
+    (colId: string) => {
+      if (!dataset || !currentBinding) return;
+      updateDatasetBinding(dataset.id, { ...currentBinding, xAxisColumnId: colId || null });
+    },
+    [dataset, currentBinding, updateDatasetBinding],
+  );
+
+  const setPieColumn = useCallback(
+    (field: "pieNameColumnId" | "pieValueColumnId", colId: string) => {
+      if (!dataset || !currentBinding) return;
+      updateDatasetBinding(dataset.id, { ...currentBinding, [field]: colId || null });
+    },
+    [dataset, currentBinding, updateDatasetBinding],
+  );
+
+  const addSeriesBinding = useCallback(() => {
+    if (!dataset || !currentBinding) return;
+    const numCol = dataset.columns.find((c) => c.type === "number");
+    const newSeries: SeriesBinding = {
+      id: uuid(),
+      columnId: numCol?.id ?? dataset.columns[0]?.id ?? "",
+      name: "",
+    };
+    updateDatasetBinding(dataset.id, {
+      ...currentBinding,
+      series: [...currentBinding.series, newSeries],
+    });
+  }, [dataset, currentBinding, updateDatasetBinding]);
+
+  const updateSeriesBinding = useCallback(
+    (seriesId: string, patch: Partial<SeriesBinding>) => {
+      if (!dataset || !currentBinding) return;
+      updateDatasetBinding(dataset.id, {
+        ...currentBinding,
+        series: currentBinding.series.map((s) =>
+          s.id === seriesId ? { ...s, ...patch } : s,
+        ),
+      });
+    },
+    [dataset, currentBinding, updateDatasetBinding],
+  );
+
+  const removeSeriesBinding = useCallback(
+    (seriesId: string) => {
+      if (!dataset || !currentBinding) return;
+      updateDatasetBinding(dataset.id, {
+        ...currentBinding,
+        series: currentBinding.series.filter((s) => s.id !== seriesId),
+      });
+    },
+    [dataset, currentBinding, updateDatasetBinding],
   );
 
   const handleCellClick = useCallback(
@@ -499,6 +592,186 @@ export default function DataEditor() {
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
+      </div>
+
+      {/* Binding panel */}
+      <div className="border-b bg-muted/20">
+        <button
+          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/40 transition-colors"
+          onClick={() => setBindingOpen((o) => !o)}
+        >
+          {hasBinding ? (
+            <Link2 className="h-3.5 w-3.5 text-green-500" />
+          ) : (
+            <Unlink className="h-3.5 w-3.5" />
+          )}
+          {bindingOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          <BarChart3 className="h-3.5 w-3.5" />
+          {t("dataEditor.bindingTitle")}
+          {hasBinding && (
+            <Badge variant="secondary" className="ml-auto text-[10px]">
+              {currentBinding!.chartType}
+            </Badge>
+          )}
+        </button>
+
+        {bindingOpen && dataset && (
+          <div className="space-y-2 border-t px-3 py-2">
+            {!currentBinding ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={toggleBinding}
+                >
+                  <Link2 className="mr-1 h-3 w-3" />
+                  {t("dataEditor.bindingEnable")}
+                </Button>
+                <span className="text-[11px] text-muted-foreground">
+                  {t("dataEditor.bindingHint")}
+                </span>
+              </div>
+            ) : (
+              <>
+                {/* Unlink button */}
+                <div className="flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-[10px] text-destructive hover:text-destructive"
+                    onClick={toggleBinding}
+                  >
+                    <Unlink className="mr-1 h-3 w-3" />
+                    {t("dataEditor.bindingDisable")}
+                  </Button>
+                </div>
+
+                {isPie ? (
+                  <>
+                    {/* Pie: name + value columns */}
+                    <div className="flex items-center gap-2">
+                      <span className="w-16 text-[11px] font-medium text-muted-foreground">
+                        {t("dataEditor.bindingPieName")}:
+                      </span>
+                      <Select
+                        value={currentBinding.pieNameColumnId ?? ""}
+                        onValueChange={(v) => setPieColumn("pieNameColumnId", v)}
+                      >
+                        <SelectTrigger className="h-7 w-44 text-xs">
+                          <SelectValue placeholder={t("dataEditor.bindingSelectColumn")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {dataset.columns.map((c) => (
+                            <SelectItem key={c.id} value={c.id} className="text-xs">
+                              {c.name} <span className="text-muted-foreground">({c.type})</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-16 text-[11px] font-medium text-muted-foreground">
+                        {t("dataEditor.bindingPieValue")}:
+                      </span>
+                      <Select
+                        value={currentBinding.pieValueColumnId ?? ""}
+                        onValueChange={(v) => setPieColumn("pieValueColumnId", v)}
+                      >
+                        <SelectTrigger className="h-7 w-44 text-xs">
+                          <SelectValue placeholder={t("dataEditor.bindingSelectColumn")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {dataset.columns.map((c) => (
+                            <SelectItem key={c.id} value={c.id} className="text-xs">
+                              {c.name} <span className="text-muted-foreground">({c.type})</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Cartesian / Radar: xAxis selector */}
+                    {!isRadar && (
+                      <div className="flex items-center gap-2">
+                        <span className="w-16 text-[11px] font-medium text-muted-foreground">
+                          xAxis:
+                        </span>
+                        <Select
+                          value={currentBinding.xAxisColumnId ?? ""}
+                          onValueChange={setXAxisColumn}
+                        >
+                          <SelectTrigger className="h-7 w-44 text-xs">
+                            <SelectValue placeholder={t("dataEditor.bindingSelectColumn")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {dataset.columns.map((c) => (
+                              <SelectItem key={c.id} value={c.id} className="text-xs">
+                                {c.name} <span className="text-muted-foreground">({c.type})</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Series / Indicators list */}
+                    <div className="space-y-1.5">
+                      {currentBinding.series.map((sb) => (
+                        <div key={sb.id} className="flex items-center gap-2">
+                          <span className="w-16 text-[11px] font-medium text-muted-foreground">
+                            {isRadar ? "Indicator:" : "Series:"}
+                          </span>
+                          <Select
+                            value={sb.columnId}
+                            onValueChange={(v) => updateSeriesBinding(sb.id, { columnId: v })}
+                          >
+                            <SelectTrigger className="h-7 w-44 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {dataset.columns.map((c) => (
+                                <SelectItem key={c.id} value={c.id} className="text-xs">
+                                  {c.name} <span className="text-muted-foreground">({c.type})</span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          <Input
+                            className="h-7 w-28 text-xs"
+                            placeholder={t("dataEditor.bindingNamePlaceholder")}
+                            value={sb.name}
+                            onChange={(e) => updateSeriesBinding(sb.id, { name: e.target.value })}
+                          />
+
+                          <button
+                            className="rounded p-0.5 text-destructive/70 hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => removeSeriesBinding(sb.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={addSeriesBinding}
+                    >
+                      <Plus className="mr-1 h-3 w-3" />
+                      {isRadar ? t("dataEditor.bindingAddIndicator") : t("dataEditor.bindingAddSeries")}
+                    </Button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-hidden">

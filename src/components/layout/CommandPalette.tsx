@@ -3,7 +3,6 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useUIStore } from "@/stores/uiStore";
 import { useT } from "@/lib/i18n/context";
 import { useProjectStore } from "@/stores/projectStore";
-import { chartTemplates } from "@/templates";
 import {
   Search,
   FilePlus,
@@ -79,17 +78,11 @@ export default function CommandPalette() {
 
   const createProject = useProjectStore((s) => s.createProject);
   const saveProject = useProjectStore((s) => s.saveProject);
-  const updateChartOption = useProjectStore((s) => s.updateChartOption);
+  const setChartType = useProjectStore((s) => s.setChartType);
 
   const mk = modKey();
 
   const sections = useMemo((): CommandSection[] => {
-    const barTemplate = chartTemplates.find((t) => t.id === "bar-monthly-revenue");
-    const lineTemplate = chartTemplates.find((t) => t.id === "line-time-series");
-    const pieTemplate = chartTemplates.find((t) => t.id === "pie-market-share");
-    const scatterTemplate = chartTemplates.find((t) => t.id === "scatter-correlation");
-    const radarTemplate = chartTemplates.find((t) => t.id === "radar-skills-assessment");
-
     return [
       {
         label: t("commandPalette.sectionFile"),
@@ -222,56 +215,46 @@ export default function CommandPalette() {
       {
         label: t("commandPalette.sectionChart"),
         commands: [
-          ...(barTemplate
-            ? [{
-                id: "chart-bar",
-                label: t("commandPalette.barChart"),
-                description: barTemplate.description,
-                icon: BarChart3,
-                action: () => { updateChartOption(barTemplate.option); closeCommandPalette(); },
-                section: t("commandPalette.sectionChart") as string,
-              }]
-            : []),
-          ...(lineTemplate
-            ? [{
-                id: "chart-line",
-                label: t("commandPalette.lineChart"),
-                description: lineTemplate.description,
-                icon: LineChart,
-                action: () => { updateChartOption(lineTemplate.option); closeCommandPalette(); },
-                section: t("commandPalette.sectionChart") as string,
-              }]
-            : []),
-          ...(pieTemplate
-            ? [{
-                id: "chart-pie",
-                label: t("commandPalette.pieChart"),
-                description: pieTemplate.description,
-                icon: PieChart,
-                action: () => { updateChartOption(pieTemplate.option); closeCommandPalette(); },
-                section: t("commandPalette.sectionChart") as string,
-              }]
-            : []),
-          ...(scatterTemplate
-            ? [{
-                id: "chart-scatter",
-                label: t("commandPalette.scatterChart"),
-                description: scatterTemplate.description,
-                icon: Copy,
-                action: () => { updateChartOption(scatterTemplate.option); closeCommandPalette(); },
-                section: t("commandPalette.sectionChart") as string,
-              }]
-            : []),
-          ...(radarTemplate
-            ? [{
-                id: "chart-radar",
-                label: t("commandPalette.radarChart"),
-                description: radarTemplate.description,
-                icon: Layout,
-                action: () => { updateChartOption(radarTemplate.option); closeCommandPalette(); },
-                section: t("commandPalette.sectionChart") as string,
-              }]
-            : []),
+          {
+            id: "chart-bar",
+            label: t("commandPalette.barChart"),
+            description: "Switch to bar chart",
+            icon: BarChart3,
+            action: () => { setChartType("bar"); closeCommandPalette(); },
+            section: t("commandPalette.sectionChart") as string,
+          },
+          {
+            id: "chart-line",
+            label: t("commandPalette.lineChart"),
+            description: "Switch to line chart",
+            icon: LineChart,
+            action: () => { setChartType("line"); closeCommandPalette(); },
+            section: t("commandPalette.sectionChart") as string,
+          },
+          {
+            id: "chart-pie",
+            label: t("commandPalette.pieChart"),
+            description: "Switch to pie chart",
+            icon: PieChart,
+            action: () => { setChartType("pie"); closeCommandPalette(); },
+            section: t("commandPalette.sectionChart") as string,
+          },
+          {
+            id: "chart-scatter",
+            label: t("commandPalette.scatterChart"),
+            description: "Switch to scatter chart",
+            icon: Copy,
+            action: () => { setChartType("scatter"); closeCommandPalette(); },
+            section: t("commandPalette.sectionChart") as string,
+          },
+          {
+            id: "chart-radar",
+            label: t("commandPalette.radarChart"),
+            description: "Switch to radar chart",
+            icon: Layout,
+            action: () => { setChartType("radar"); closeCommandPalette(); },
+            section: t("commandPalette.sectionChart") as string,
+          },
         ],
       },
       {
@@ -288,7 +271,7 @@ export default function CommandPalette() {
         ],
       },
     ];
-  }, [t, mk, theme, createProject, saveProject, updateChartOption, toggleSidebar, toggleInspector, toggleBottomPanel, toggleTheme, toggleMode, closeCommandPalette]);
+  }, [t, mk, theme, createProject, saveProject, setChartType, toggleSidebar, toggleInspector, toggleBottomPanel, toggleTheme, toggleMode, closeCommandPalette]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return sections;
