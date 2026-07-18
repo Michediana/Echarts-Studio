@@ -93,6 +93,12 @@ export interface ProjectFile {
   document: ProjectDocument;
 }
 
+function detectSystemTheme(): "light" | "dark" {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
+
 function detectSystemLanguage(): "en" | "it" {
   const langs = navigator.languages ?? [navigator.language];
   for (const lang of langs) {
@@ -111,7 +117,7 @@ export const DEFAULT_UI_STATE: UIState = {
   bottomPanelTab: "json",
   inspectorTab: "properties",
   mode: "advanced",
-  theme: "dark",
+  theme: detectSystemTheme(),
   language: detectSystemLanguage(),
   centerView: "chart",
 };
