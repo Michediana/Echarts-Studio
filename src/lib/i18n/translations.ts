@@ -179,6 +179,18 @@ type TranslationKeys = {
   "dataEditor.bindingPieValue": string;
   "dataEditor.bindingAddIndicator": string;
 
+  // Context menu
+  "dataEditor.contextCut": string;
+  "dataEditor.contextCopy": string;
+  "dataEditor.contextPaste": string;
+  "dataEditor.contextDelete": string;
+  "dataEditor.contextInsertRowAbove": string;
+  "dataEditor.contextInsertRowBelow": string;
+  "dataEditor.contextInsertColLeft": string;
+  "dataEditor.contextInsertColRight": string;
+  "dataEditor.contextDeleteRow": string;
+  "dataEditor.contextDeleteCol": string;
+
   // ExportDialog
   "export.title": string;
   "export.description": string;
@@ -373,6 +385,18 @@ export const translations: Record<Language, TranslationKeys> = {
     "dataEditor.bindingPieValue": "Value",
     "dataEditor.bindingAddIndicator": "Add indicator",
 
+    // Context menu
+    "dataEditor.contextCut": "Cut",
+    "dataEditor.contextCopy": "Copy",
+    "dataEditor.contextPaste": "Paste",
+    "dataEditor.contextDelete": "Delete",
+    "dataEditor.contextInsertRowAbove": "Insert row above",
+    "dataEditor.contextInsertRowBelow": "Insert row below",
+    "dataEditor.contextInsertColLeft": "Insert column left",
+    "dataEditor.contextInsertColRight": "Insert column right",
+    "dataEditor.contextDeleteRow": "Delete row",
+    "dataEditor.contextDeleteCol": "Delete column",
+
     // ExportDialog
     "export.title": "Export",
     "export.description": "Export your chart or project in various formats.",
@@ -565,6 +589,18 @@ export const translations: Record<Language, TranslationKeys> = {
     "dataEditor.bindingPieName": "Nome",
     "dataEditor.bindingPieValue": "Valore",
     "dataEditor.bindingAddIndicator": "Aggiungi indicatore",
+
+    // Context menu
+    "dataEditor.contextCut": "Taglia",
+    "dataEditor.contextCopy": "Copia",
+    "dataEditor.contextPaste": "Incolla",
+    "dataEditor.contextDelete": "Elimina",
+    "dataEditor.contextInsertRowAbove": "Inserisci riga sopra",
+    "dataEditor.contextInsertRowBelow": "Inserisci riga sotto",
+    "dataEditor.contextInsertColLeft": "Inserisci colonna a sinistra",
+    "dataEditor.contextInsertColRight": "Inserisci colonna a destra",
+    "dataEditor.contextDeleteRow": "Elimina riga",
+    "dataEditor.contextDeleteCol": "Elimina colonna",
 
     // ExportDialog
     "export.title": "Esporta",
