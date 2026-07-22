@@ -6,6 +6,7 @@ import { useUIStore } from "@/stores/uiStore";
 import { datasetToOption } from "@/lib/data/datasetToOption";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
+import PngExportDialog from "./PngExportDialog";
 
 const EMPTY_OPTION = {};
 
@@ -15,6 +16,7 @@ export default function ChartPreview() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [pngExportOpen, setPngExportOpen] = useState(false);
 
   const currentProject = useProjectStore((s) => s.currentProject);
   const theme = useUIStore((s) => s.theme);
@@ -70,27 +72,6 @@ export default function ChartPreview() {
       document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
     }
   }, []);
-
-  const handleExportPNG = useCallback(() => {
-    try {
-      const instance = chartRef.current?.getEchartsInstance();
-      if (!instance) return;
-
-      const url = instance.getDataURL({
-        type: "png",
-        pixelRatio: window.devicePixelRatio,
-        backgroundColor: theme === "dark" ? "#1a1a2e" : "#ffffff",
-      });
-
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${currentProject?.metadata?.name ?? "chart"}.png`;
-      link.click();
-    } catch (err) {
-      console.error("PNG export failed:", err);
-      setError(err instanceof Error ? err.message : t("chartPreview.failedExportPng"));
-    }
-  }, [theme, currentProject?.metadata?.name, t]);
 
   useEffect(() => {
     const onFsChange = () => {
@@ -163,7 +144,7 @@ export default function ChartPreview() {
         <ToolbarButton
           icon={<FileImage className="h-3.5 w-3.5" />}
           tooltip={t("chartPreview.exportAsPng")}
-          onClick={handleExportPNG}
+          onClick={() => setPngExportOpen(true)}
         />
         <ToolbarButton
           icon={<FileImage className="h-3.5 w-3.5" />}
@@ -172,6 +153,12 @@ export default function ChartPreview() {
           disabled
         />
       </div>
+
+      <PngExportDialog
+        open={pngExportOpen}
+        onOpenChange={setPngExportOpen}
+        chartRef={chartRef}
+      />
     </div>
   );
 }

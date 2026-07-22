@@ -72,9 +72,17 @@ export function Sidebar() {
   const addDataset = useProjectStore((s) => s.addDataset);
   const applyTemplate = useProjectStore((s) => s.applyTemplate);
 
+  const isDefault = currentProject?.metadata?.isDefault ?? false;
+  const showTemplates = isDefault;
+  const [activeTab, setActiveTab] = useState<string>("project");
+
+  if (activeTab === "templates" && !showTemplates) {
+    setActiveTab("project");
+  }
+
   return (
     <div className="flex h-full flex-col bg-sidebar-background">
-      <Tabs defaultValue="project" className="flex h-full flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full flex-col">
         <TabsList className="mx-2 mt-2 h-8">
           <TabsTrigger value="project" className="gap-1.5 text-xs px-2 h-6">
             <FolderTree className="h-3.5 w-3.5" />
@@ -84,10 +92,12 @@ export function Sidebar() {
             <Database className="h-3.5 w-3.5" />
             {t("sidebar.tabData")}
           </TabsTrigger>
-          <TabsTrigger value="templates" className="gap-1.5 text-xs px-2 h-6">
-            <LayoutTemplate className="h-3.5 w-3.5" />
-            {t("sidebar.tabTemplates")}
-          </TabsTrigger>
+          {showTemplates && (
+            <TabsTrigger value="templates" className="gap-1.5 text-xs px-2 h-6">
+              <LayoutTemplate className="h-3.5 w-3.5" />
+              {t("sidebar.tabTemplates")}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="project" className="flex-1 mt-0 overflow-hidden">

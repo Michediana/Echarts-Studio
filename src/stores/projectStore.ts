@@ -19,6 +19,14 @@ function snapshotProject(project: ProjectDocument | null): ProjectDocument | nul
   return JSON.parse(JSON.stringify(project)) as ProjectDocument;
 }
 
+function markNotDefault(project: ProjectDocument): ProjectDocument {
+  if (!project.metadata.isDefault) return project;
+  return {
+    ...project,
+    metadata: { ...project.metadata, isDefault: false },
+  };
+}
+
 const SAMPLE_MONTHS = [
   "Jan",
   "Feb",
@@ -158,6 +166,7 @@ function createDefaultProject(): ProjectDocument {
       updatedAt: now,
       tags: [],
       schemaVersion: "1.0.0",
+      isDefault: true,
     },
     datasets: [dataset],
     bindings: [binding],
@@ -331,14 +340,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     pushHistory(currentProject);
 
     set({
-      currentProject: {
+      currentProject: markNotDefault({
         ...currentProject,
         bindings: [],
         chart: {
           ...currentProject.chart,
           option,
         },
-      },
+      }),
       isDirty: true,
     });
   },
@@ -350,14 +359,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     pushHistory(currentProject);
 
     set({
-      currentProject: {
+      currentProject: markNotDefault({
         ...currentProject,
         bindings: [],
         chart: {
           ...currentProject.chart,
           option,
         },
-      },
+      }),
       isDirty: true,
     });
   },
@@ -369,14 +378,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     pushHistory(currentProject);
 
     set({
-      currentProject: {
+      currentProject: markNotDefault({
         ...currentProject,
         metadata: {
           ...currentProject.metadata,
           ...metadata,
           updatedAt: new Date().toISOString(),
         },
-      },
+      }),
       isDirty: true,
     });
   },
@@ -388,14 +397,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     pushHistory(currentProject);
 
     set({
-      currentProject: {
+      currentProject: markNotDefault({
         ...currentProject,
         datasets: [...currentProject.datasets, dataset],
         metadata: {
           ...currentProject.metadata,
           updatedAt: new Date().toISOString(),
         },
-      },
+      }),
       isDirty: true,
     });
   },
@@ -407,14 +416,15 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     pushHistory(currentProject);
 
     set({
-      currentProject: {
+      currentProject: markNotDefault({
         ...currentProject,
         datasets: currentProject.datasets.filter((d) => d.id !== datasetId),
+        bindings: (currentProject.bindings ?? []).filter((b) => b.datasetId !== datasetId),
         metadata: {
           ...currentProject.metadata,
           updatedAt: new Date().toISOString(),
         },
-      },
+      }),
       isDirty: true,
     });
   },
@@ -426,7 +436,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     pushHistory(currentProject);
 
     set({
-      currentProject: {
+      currentProject: markNotDefault({
         ...currentProject,
         datasets: currentProject.datasets.map((d) =>
           d.id === datasetId ? { ...d, ...partial, updatedAt: new Date().toISOString() } : d,
@@ -435,7 +445,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
           ...currentProject.metadata,
           updatedAt: new Date().toISOString(),
         },
-      },
+      }),
       isDirty: true,
     });
   },
@@ -454,14 +464,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         : [...bindings, binding];
 
     set({
-      currentProject: {
+      currentProject: markNotDefault({
         ...currentProject,
         bindings: updatedBindings,
         metadata: {
           ...currentProject.metadata,
           updatedAt: new Date().toISOString(),
         },
-      },
+      }),
       isDirty: true,
     });
   },
@@ -476,14 +486,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     if (bindings.length > 0) {
       const first = bindings[0];
       set({
-        currentProject: {
+        currentProject: markNotDefault({
           ...currentProject,
           bindings: [{ ...first, chartType }],
           metadata: {
             ...currentProject.metadata,
             updatedAt: new Date().toISOString(),
           },
-        },
+        }),
         isDirty: true,
       });
     } else {
@@ -499,14 +509,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
           pieValueColumnId: null,
         };
         set({
-          currentProject: {
+          currentProject: markNotDefault({
             ...currentProject,
             bindings: [newBinding],
             metadata: {
               ...currentProject.metadata,
               updatedAt: new Date().toISOString(),
             },
-          },
+          }),
           isDirty: true,
         });
       }

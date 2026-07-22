@@ -1,6 +1,6 @@
 [package]
 name = "echarts-studio"
-version = "0.1.0"
+version = "0.0.1"
 description = "ECharts Studio Desktop"
 authors = ["ECharts Studio"]
 edition = "2021"

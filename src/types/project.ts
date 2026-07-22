@@ -54,6 +54,7 @@ export interface ProjectMetadata {
   updatedAt: string;
   tags: string[];
   schemaVersion: string;
+  isDefault?: boolean;
 }
 
 export type Language = "en" | "it";

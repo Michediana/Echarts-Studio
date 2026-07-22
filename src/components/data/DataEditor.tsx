@@ -1232,7 +1232,7 @@ export default function DataEditor() {
 
   const handleDeleteDataset = useCallback(() => {
     if (!dataset || !currentProject) return;
-    removeDataset(currentProject.id);
+    removeDataset(dataset.id);
     setSelectedDatasetId(null);
   }, [dataset, currentProject, removeDataset]);
 

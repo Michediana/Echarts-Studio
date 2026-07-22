@@ -111,6 +111,15 @@ type TranslationKeys = {
   "chartPreview.fullscreen": string;
   "chartPreview.exportAsPng": string;
   "chartPreview.comingSoon": string;
+  "chartPreview.exportPngTitle": string;
+  "chartPreview.exportPngDesc": string;
+  "chartPreview.width": string;
+  "chartPreview.height": string;
+  "chartPreview.dpi": string;
+  "chartPreview.outputSize": string;
+  "chartPreview.cancel": string;
+  "chartPreview.export": string;
+  "chartPreview.exporting": string;
 
   // PropertyInspector
   "inspector.noPropertiesFound": string;
@@ -317,6 +326,15 @@ export const translations: Record<Language, TranslationKeys> = {
     "chartPreview.fullscreen": "Fullscreen",
     "chartPreview.exportAsPng": "Export as PNG",
     "chartPreview.comingSoon": "Coming soon",
+    "chartPreview.exportPngTitle": "Export PNG",
+    "chartPreview.exportPngDesc": "Configure the image size and resolution",
+    "chartPreview.width": "Width (px)",
+    "chartPreview.height": "Height (px)",
+    "chartPreview.dpi": "Resolution",
+    "chartPreview.outputSize": "Output size",
+    "chartPreview.cancel": "Cancel",
+    "chartPreview.export": "Export",
+    "chartPreview.exporting": "Exporting…",
 
     // PropertyInspector
     "inspector.noPropertiesFound": "No properties found",
@@ -522,6 +540,15 @@ export const translations: Record<Language, TranslationKeys> = {
     "chartPreview.fullscreen": "Schermo intero",
     "chartPreview.exportAsPng": "Esporta come PNG",
     "chartPreview.comingSoon": "Disponibile a breve",
+    "chartPreview.exportPngTitle": "Esporta PNG",
+    "chartPreview.exportPngDesc": "Configura dimensione e risoluzione dell'immagine",
+    "chartPreview.width": "Larghezza (px)",
+    "chartPreview.height": "Altezza (px)",
+    "chartPreview.dpi": "Risoluzione",
+    "chartPreview.outputSize": "Dimensione output",
+    "chartPreview.cancel": "Annulla",
+    "chartPreview.export": "Esporta",
+    "chartPreview.exporting": "Esportazione…",
 
     // PropertyInspector
     "inspector.noPropertiesFound": "Nessuna proprietà trovata",

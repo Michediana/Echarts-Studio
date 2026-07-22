@@ -1,0 +1,75 @@
+name: "Release App Multi-Piattaforma"
+
+on:
+  push:
+    tags:
+      - 'v*' # Si attiva quando fai il push di un tag che inizia con "v" (es. v1.0.0)
+
+jobs:
+  publish-tauri:
+    permissions:
+      contents: write # Permette di creare la release e caricare gli asset
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest' # Per macOS (Apple Silicon)
+            args: '--target aarch64-apple-darwin'
+          - platform: 'macos-latest' # Per macOS (Intel)
+            args: '--target x86_64-apple-darwin'
+          - platform: 'ubuntu-22.04' # Per Linux
+            args: ''
+          - platform: 'windows-latest' # Per Windows
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Installazione Node.js (modifica la versione se necessario)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'npm' # o pnpm/yarn/bun se li usi
+
+      # Dipendenze Linux necessarie per Tauri e WebKitGTK
+      - name: Install dependencies (Ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+
+      # Installazione Rust Toolchain
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      # Cache di Rust per velocizzare i build successivi
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      # Installazione dipendenze frontend (npm, pnpm, etc.)
+      - name: Install frontend dependencies
+        run: npm ci # usa 'pnpm install' o 'yarn install' se preferisci
+
+      # Esecuzione Build e Creazione Release GitHub
+      - name: Build e Pubblica Tauri App
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Ad-hoc signing per macOS: firma i binari senza account/certificati Apple.
+          # Evita l'errore "app danneggiata" su Apple Silicon. Ignorato su Windows/Linux.
+          APPLE_SIGNING_IDENTITY: '-'
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'App Release ${{ github.ref_name }}'
+          releaseBody: 'Vedi i cambiamenti nella release.'
+          releaseDraft: true # Crea la release come bozza per permetterti di controllarla prima di pubblicarla
+          prerelease: false
+          args: ${{ matrix.args }}
