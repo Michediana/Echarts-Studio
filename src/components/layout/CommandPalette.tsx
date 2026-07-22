@@ -79,6 +79,10 @@ export default function CommandPalette() {
   const createProject = useProjectStore((s) => s.createProject);
   const saveProject = useProjectStore((s) => s.saveProject);
   const setChartType = useProjectStore((s) => s.setChartType);
+  const undo = useProjectStore((s) => s.undo);
+  const redo = useProjectStore((s) => s.redo);
+  const canUndo = useProjectStore((s) => s.canUndo);
+  const canRedo = useProjectStore((s) => s.canRedo);
 
   const mk = modKey();
 
@@ -195,9 +199,9 @@ export default function CommandPalette() {
             label: t("commandPalette.undo"),
             description: t("commandPalette.undoDesc"),
             icon: Undo,
-            action: () => {},
+            action: () => { undo(); closeCommandPalette(); },
             shortcut: `${mk}+Z`,
-            disabled: true,
+            disabled: !canUndo(),
             section: t("commandPalette.sectionEdit"),
           },
           {
@@ -205,9 +209,9 @@ export default function CommandPalette() {
             label: t("commandPalette.redo"),
             description: t("commandPalette.redoDesc"),
             icon: Redo,
-            action: () => {},
+            action: () => { redo(); closeCommandPalette(); },
             shortcut: `${mk}+Shift+Z`,
-            disabled: true,
+            disabled: !canRedo(),
             section: t("commandPalette.sectionEdit"),
           },
         ],

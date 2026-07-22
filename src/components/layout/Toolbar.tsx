@@ -95,6 +95,11 @@ export function Toolbar() {
   const bindings = currentProject?.bindings ?? [];
   const activeChartType = bindings.length > 0 ? bindings[0].chartType : null;
 
+  const undo = useProjectStore((s) => s.undo);
+  const redo = useProjectStore((s) => s.redo);
+  const canUndo = useProjectStore((s) => s.canUndo);
+  const canRedo = useProjectStore((s) => s.canRedo);
+
   const handleNew = useCallback(() => {
     createProject();
   }, [createProject]);
@@ -223,8 +228,8 @@ export function Toolbar() {
 
           <Separator orientation="vertical" className="h-5 mx-1" />
 
-          <ToolbarButton icon={Undo} label={t("toolbar.undo")} disabled />
-          <ToolbarButton icon={Redo} label={t("toolbar.redo")} disabled />
+          <ToolbarButton icon={Undo} label={t("toolbar.undo")} onClick={undo} disabled={!canUndo()} />
+          <ToolbarButton icon={Redo} label={t("toolbar.redo")} onClick={redo} disabled={!canRedo()} />
         </div>
 
         {/* Right section: Mode, Theme, Export, Command Palette */}

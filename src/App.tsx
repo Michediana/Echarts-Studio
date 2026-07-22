@@ -13,6 +13,8 @@ export default function App() {
   const theme = useUIStore((s) => s.theme);
   const saveProject = useProjectStore((s) => s.saveProject);
   const createProject = useProjectStore((s) => s.createProject);
+  const undo = useProjectStore((s) => s.undo);
+  const redo = useProjectStore((s) => s.redo);
 
   useEffect(() => {
     applyThemeClass(theme);
@@ -42,16 +44,16 @@ export default function App() {
       if (key === "z") {
         e.preventDefault();
         if (e.shiftKey) {
-          // TODO: redo
+          redo();
         } else {
-          // TODO: undo
+          undo();
         }
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [saveProject, createProject]);
+  }, [saveProject, createProject, undo, redo]);
 
   return <AppShell />;
 }

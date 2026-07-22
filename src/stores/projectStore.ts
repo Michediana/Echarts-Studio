@@ -9,6 +9,16 @@ import type {
   DatasetBinding,
 } from "@/types/project";
 
+const MAX_HISTORY = 50;
+
+const undoStack: ProjectDocument[] = [];
+const redoStack: ProjectDocument[] = [];
+
+function snapshotProject(project: ProjectDocument | null): ProjectDocument | null {
+  if (!project) return null;
+  return JSON.parse(JSON.stringify(project)) as ProjectDocument;
+}
+
 const SAMPLE_MONTHS = [
   "Jan",
   "Feb",
@@ -160,6 +170,17 @@ function createDefaultProject(): ProjectDocument {
   };
 }
 
+function pushHistory(currentProject: ProjectDocument | null) {
+  const snapshot = snapshotProject(currentProject);
+  if (snapshot) {
+    undoStack.push(snapshot);
+    if (undoStack.length > MAX_HISTORY) {
+      undoStack.shift();
+    }
+  }
+  redoStack.length = 0;
+}
+
 interface ProjectStore {
   currentProject: ProjectDocument | null;
   currentFilePath: string | null;
@@ -184,6 +205,12 @@ interface ProjectStore {
   loadRecentProjects: () => Promise<void>;
   addRecentProject: (path: string) => Promise<void>;
   removeRecentProject: (path: string) => Promise<void>;
+
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  clearHistory: () => void;
 }
 
 const RECENT_PROJECTS_KEY = "echarts-studio:recent-projects";
@@ -213,6 +240,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       currentFilePath: null,
       isDirty: false,
     });
+    get().clearHistory();
   },
 
   openProject: async (path: string) => {
@@ -225,6 +253,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         currentFilePath: path,
         isDirty: false,
       });
+      get().clearHistory();
       await get().addRecentProject(path);
     } catch (err) {
       console.error("Failed to open project:", err);
@@ -299,6 +328,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     const { currentProject } = get();
     if (!currentProject) return;
 
+    pushHistory(currentProject);
+
     set({
       currentProject: {
         ...currentProject,
@@ -315,6 +346,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   applyTemplate: (option: Record<string, unknown>) => {
     const { currentProject } = get();
     if (!currentProject) return;
+
+    pushHistory(currentProject);
 
     set({
       currentProject: {
@@ -333,6 +366,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     const { currentProject } = get();
     if (!currentProject) return;
 
+    pushHistory(currentProject);
+
     set({
       currentProject: {
         ...currentProject,
@@ -349,6 +384,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   addDataset: (dataset: DatasetDocument) => {
     const { currentProject } = get();
     if (!currentProject) return;
+
+    pushHistory(currentProject);
 
     set({
       currentProject: {
@@ -367,6 +404,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     const { currentProject } = get();
     if (!currentProject) return;
 
+    pushHistory(currentProject);
+
     set({
       currentProject: {
         ...currentProject,
@@ -383,6 +422,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   updateDataset: (datasetId: string, partial: Partial<DatasetDocument>) => {
     const { currentProject } = get();
     if (!currentProject) return;
+
+    pushHistory(currentProject);
 
     set({
       currentProject: {
@@ -402,6 +443,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   updateDatasetBinding: (datasetId: string, binding: DatasetBinding) => {
     const { currentProject } = get();
     if (!currentProject) return;
+
+    pushHistory(currentProject);
 
     const bindings = currentProject.bindings ?? [];
     const existing = bindings.findIndex((b) => b.datasetId === datasetId);
@@ -426,6 +469,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   setChartType: (chartType) => {
     const { currentProject } = get();
     if (!currentProject) return;
+
+    pushHistory(currentProject);
 
     const bindings = currentProject.bindings ?? [];
     if (bindings.length > 0) {
@@ -474,10 +519,50 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       currentFilePath: filePath,
       isDirty: false,
     });
+    get().clearHistory();
   },
 
   markDirty: () => set({ isDirty: true }),
   markClean: () => set({ isDirty: false }),
+
+  undo: () => {
+    const { currentProject } = get();
+    const snapshot = undoStack.pop();
+    if (!snapshot) return;
+
+    const current = snapshotProject(currentProject);
+    if (current) {
+      redoStack.push(current);
+    }
+
+    set({
+      currentProject: snapshot,
+      isDirty: true,
+    });
+  },
+
+  redo: () => {
+    const { currentProject } = get();
+    const snapshot = redoStack.pop();
+    if (!snapshot) return;
+
+    const current = snapshotProject(currentProject);
+    if (current) {
+      undoStack.push(current);
+    }
+
+    set({
+      currentProject: snapshot,
+      isDirty: true,
+    });
+  },
+
+  canUndo: () => undoStack.length > 0,
+  canRedo: () => redoStack.length > 0,
+  clearHistory: () => {
+    undoStack.length = 0;
+    redoStack.length = 0;
+  },
 
   loadRecentProjects: async () => {
     set({ recentProjects: loadRecentFromStorage() });
