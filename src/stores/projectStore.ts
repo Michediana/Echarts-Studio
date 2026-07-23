@@ -116,14 +116,14 @@ function createDefaultProject(): ProjectDocument {
 
   return {
     id: uuid(),
-    version: "2.0.0",
+    version: "2.1.0",
     metadata: {
       name: "Untitled Project",
       description: "A new ECharts project",
       createdAt: now,
       updatedAt: now,
       tags: [],
-      schemaVersion: "2.0.0",
+      schemaVersion: "2.1.0",
       isDefault: true,
     },
     datasets: [dataset],

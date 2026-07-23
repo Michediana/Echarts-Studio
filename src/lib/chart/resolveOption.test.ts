@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { resolveOption, resolveBaseOption } from "./resolveOption";
+import { DELETE } from "./deepMerge";
 import type {
   ProjectDocument,
   DatasetDocument,
@@ -89,11 +90,19 @@ describe("resolveOption", () => {
     expect(series[1].data).toEqual([40, 60]);
   });
 
-  it("removes a property when the override is explicitly null", () => {
+  it("removes a property when the override is the DELETE sentinel", () => {
     const base = resolveBaseOption(makeProject({}));
     expect(base.legend).toBeDefined();
-    const opt = resolveOption(makeProject({ legend: null })) as Record<string, unknown>;
+    const opt = resolveOption(makeProject({ legend: DELETE })) as Record<string, unknown>;
     expect(opt.legend).toBeUndefined();
+  });
+
+  it("treats null as an ordinary value, not as a deletion", () => {
+    const opt = resolveOption(makeProject({ yAxis: { min: null } })) as Record<string, unknown>;
+    // min:null (ECharts "auto") is kept as a real value.
+    expect((opt.yAxis as Record<string, unknown>).min).toBeNull();
+    // yAxis was still merged onto the generated base (type:"value" survives).
+    expect((opt.yAxis as Record<string, unknown>).type).toBe("value");
   });
 
   it("returns just the overrides when there is no binding", () => {

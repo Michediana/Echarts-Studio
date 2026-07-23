@@ -1,5 +1,5 @@
 import { deepEqual, isPlainObject, clone } from "./deepEqual";
-import { deepMerge } from "./deepMerge";
+import { deepMerge, DELETE } from "./deepMerge";
 
 /**
  * Given the generated `base` option and an `edited` option (e.g. from the raw
@@ -7,10 +7,15 @@ import { deepMerge } from "./deepMerge";
  * `deepMerge(base, overrides)` reproduces `edited`.
  *
  * The diff mirrors {@link deepMerge}'s semantics so it round-trips:
- *  - object keys present only in `base` are marked removed with `null`;
+ *  - object keys present only in `base` are marked removed with the `DELETE`
+ *    sentinel;
  *  - arrays are diffed by index; an unchanged object element becomes `{}` (an
  *    empty, no-op override) so that dataset-generated data — e.g. `series[i].data`
- *    — is *not* copied into the overrides and stays linked to the dataset.
+ *    — is *not* copied into the overrides and stays linked to the dataset;
+ *    trailing base elements dropped in `edited` become `DELETE`, which truncates
+ *    the array on merge.
+ *  - `null` is treated as an ordinary value, so `min: null` or a gap in a
+ *    `data` array diffs and round-trips like any other value.
  *
  * Returns `null` when the diff cannot be represented reliably (verified by
  * re-merging and comparing). Callers should then fall back to storing the whole
@@ -44,7 +49,7 @@ function diffObject(
     }
   }
   for (const key of Object.keys(base)) {
-    if (!(key in edited)) frag[key] = null; // removed → null tells merge to delete
+    if (!(key in edited)) frag[key] = DELETE; // removed → sentinel tells merge to delete
   }
   return frag;
 }
@@ -54,7 +59,7 @@ function diffArray(base: unknown[], edited: unknown[]): unknown[] {
   const arr: unknown[] = [];
   for (let i = 0; i < length; i++) {
     if (i >= edited.length) {
-      arr[i] = null; // element removed
+      arr[i] = DELETE; // trailing element removed → sentinel truncates on merge
     } else if (i >= base.length) {
       arr[i] = clone(edited[i]);
     } else if (deepEqual(base[i], edited[i])) {

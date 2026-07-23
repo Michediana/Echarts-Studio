@@ -127,4 +127,4 @@ export const DEFAULT_UI_STATE: UIState = {
   centerView: "chart",
 };
 
-export const SCHEMA_VERSION = "2.0.0";
+export const SCHEMA_VERSION = "2.1.0";
