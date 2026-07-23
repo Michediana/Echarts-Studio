@@ -219,6 +219,20 @@ export default function DataEditor() {
     setClipboard(null);
   }, [selectedDatasetId]);
 
+  // Prevent native text selection on drag in WebKit/macOS
+  useEffect(() => {
+    const el = tableRef.current;
+    if (!el) return;
+    const handler = (e: Event) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag !== "INPUT" && tag !== "TEXTAREA") {
+        e.preventDefault();
+      }
+    };
+    el.addEventListener("selectstart", handler);
+    return () => el.removeEventListener("selectstart", handler);
+  }, []);
+
   const sortedRows = useMemo(() => {
     if (!dataset) return [];
     if (!sortState) return dataset.rows;
@@ -526,18 +540,24 @@ export default function DataEditor() {
   const handlePaste = useCallback(async () => {
     if (!dataset || !activeCell) return;
 
-    let text: string;
-    try {
-      text = await navigator.clipboard.readText();
-    } catch {
-      return;
-    }
-    if (!text) return;
+    let parsed: string[][] | null = null;
 
-    const parsed = text.split("\n").filter((line) => line.length > 0 || text.includes("\n")).map((line) =>
-      line.split("\t").map((cell) => cell.replace(/\r$/, "")),
-    );
-    if (parsed.length === 0) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        parsed = text.split("\n").filter((line) => line.length > 0 || text.includes("\n")).map((line) =>
+          line.split("\t").map((cell) => cell.replace(/\r$/, "")),
+        );
+      }
+    } catch {
+      // System clipboard unavailable (common on macOS WKWebView) – fall back to internal clipboard
+    }
+
+    if (!parsed && clipboard?.data) {
+      parsed = clipboard.data.map((row) => row.map((v) => (v === null ? "" : String(v))));
+    }
+
+    if (!parsed || parsed.length === 0) return;
 
     const rows = parsed;
     const startRow = rowIndexMap.get(activeCell.rowId);
@@ -624,6 +644,10 @@ export default function DataEditor() {
   const handleCellMouseDown = useCallback(
     (row: number, col: number, e: React.MouseEvent) => {
       if (e.button !== 0) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag !== "INPUT" && tag !== "TEXTAREA") {
+        e.preventDefault();
+      }
       document.body.style.userSelect = "none";
       if (editingCell) {
         commitEdit();
@@ -883,9 +907,12 @@ export default function DataEditor() {
     (row: number, col: number, e: React.MouseEvent) => {
       const pos = positionToCell(row, col);
       setContextMenuCell(pos);
-      selectCell(row, col);
+      const alreadySelected = selectionRange && isInRange(row, col, selectionRange);
+      if (!alreadySelected) {
+        selectCell(row, col);
+      }
     },
-    [positionToCell, selectCell],
+    [positionToCell, selectCell, selectionRange, isInRange],
   );
 
   const insertRow = useCallback(
