@@ -1,4 +1,4 @@
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from "react-resizable-panels";
 import { BarChart3, Table } from "lucide-react";
 import { Toolbar } from "@/components/layout/Toolbar";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -38,7 +38,7 @@ export default function AppShell() {
       <Toolbar />
 
       <div className="flex-1 min-h-0">
-        <PanelGroup direction="horizontal" className="h-full">
+        <PanelGroup orientation="horizontal" className="h-full">
           <Panel id="sidebar" defaultSize={20} minSize={10} collapsedSize={0} collapsible>
             <Sidebar />
           </Panel>
