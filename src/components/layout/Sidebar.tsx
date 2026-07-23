@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
 import { useProjectStore } from "@/stores/projectStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useT } from "@/lib/i18n/context";
@@ -402,8 +403,10 @@ function TemplatesTab({ onApplyTemplate }: TemplatesTabProps) {
   const handleApply = useCallback(
     (template: ChartTemplate) => {
       onApplyTemplate(template.option);
+      // Applying a template intentionally detaches the chart from the dataset.
+      toast.info(t("sidebar.templateAppliedDetached"));
     },
-    [onApplyTemplate],
+    [onApplyTemplate, t],
   );
 
   return (

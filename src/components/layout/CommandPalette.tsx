@@ -201,7 +201,7 @@ export default function CommandPalette() {
             icon: Undo,
             action: () => { undo(); closeCommandPalette(); },
             shortcut: `${mk}+Z`,
-            disabled: !canUndo(),
+            disabled: !canUndo,
             section: t("commandPalette.sectionEdit"),
           },
           {
@@ -211,7 +211,7 @@ export default function CommandPalette() {
             icon: Redo,
             action: () => { redo(); closeCommandPalette(); },
             shortcut: `${mk}+Shift+Z`,
-            disabled: !canRedo(),
+            disabled: !canRedo,
             section: t("commandPalette.sectionEdit"),
           },
         ],
@@ -275,7 +275,7 @@ export default function CommandPalette() {
         ],
       },
     ];
-  }, [t, mk, theme, createProject, saveProject, setChartType, toggleSidebar, toggleInspector, toggleBottomPanel, toggleTheme, toggleMode, closeCommandPalette]);
+  }, [t, mk, theme, createProject, saveProject, setChartType, undo, redo, canUndo, canRedo, toggleSidebar, toggleInspector, toggleBottomPanel, toggleTheme, toggleMode, closeCommandPalette]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return sections;

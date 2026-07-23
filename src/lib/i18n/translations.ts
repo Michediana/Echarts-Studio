@@ -28,6 +28,7 @@ type TranslationKeys = {
   "sidebar.tabProject": string;
   "sidebar.tabData": string;
   "sidebar.tabTemplates": string;
+  "sidebar.templateAppliedDetached": string;
   "sidebar.noProject": string;
   "sidebar.noProjectHint": string;
   "sidebar.name": string;
@@ -157,6 +158,10 @@ type TranslationKeys = {
   "jsonEditor.cannotFormatInvalidJson": string;
   "jsonEditor.copiedToClipboard": string;
   "jsonEditor.failedToCopy": string;
+  "jsonEditor.rootMustBeObject": string;
+  "jsonEditor.detachedWarning": string;
+  "jsonEditor.reattach": string;
+  "jsonEditor.reattached": string;
 
   // DataEditor
   "dataEditor.noProjectLoaded": string;
@@ -243,6 +248,7 @@ export const translations: Record<Language, TranslationKeys> = {
     "sidebar.tabProject": "Project",
     "sidebar.tabData": "Data",
     "sidebar.tabTemplates": "Templates",
+    "sidebar.templateAppliedDetached": "Template applied — chart detached from the dataset",
     "sidebar.noProject": "No project open.",
     "sidebar.noProjectHint": "Create or open a project to get started.",
     "sidebar.name": "Name",
@@ -372,6 +378,10 @@ export const translations: Record<Language, TranslationKeys> = {
     "jsonEditor.cannotFormatInvalidJson": "Cannot format: invalid JSON",
     "jsonEditor.copiedToClipboard": "Copied to clipboard",
     "jsonEditor.failedToCopy": "Failed to copy",
+    "jsonEditor.rootMustBeObject": "The root value must be a JSON object",
+    "jsonEditor.detachedWarning": "This change detaches the chart from the dataset",
+    "jsonEditor.reattach": "Reattach dataset",
+    "jsonEditor.reattached": "Chart reattached to the dataset (manual edits discarded)",
 
     // DataEditor
     "dataEditor.noProjectLoaded": "No project loaded",
@@ -457,6 +467,7 @@ export const translations: Record<Language, TranslationKeys> = {
     "sidebar.tabProject": "Progetto",
     "sidebar.tabData": "Dati",
     "sidebar.tabTemplates": "Modelli",
+    "sidebar.templateAppliedDetached": "Modello applicato — grafico scollegato dal dataset",
     "sidebar.noProject": "Nessun progetto aperto.",
     "sidebar.noProjectHint": "Crea o apri un progetto per iniziare.",
     "sidebar.name": "Nome",
@@ -586,6 +597,10 @@ export const translations: Record<Language, TranslationKeys> = {
     "jsonEditor.cannotFormatInvalidJson": "Impossibile formattare: JSON non valido",
     "jsonEditor.copiedToClipboard": "Copiato negli appunti",
     "jsonEditor.failedToCopy": "Impossibile copiare",
+    "jsonEditor.rootMustBeObject": "Il valore radice deve essere un oggetto JSON",
+    "jsonEditor.detachedWarning": "Questa modifica scollega il grafico dal dataset",
+    "jsonEditor.reattach": "Riaggancia al dataset",
+    "jsonEditor.reattached": "Grafico riagganciato al dataset (modifiche manuali scartate)",
 
     // DataEditor
     "dataEditor.noProjectLoaded": "Nessun progetto caricato",

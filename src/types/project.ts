@@ -74,18 +74,22 @@ export interface UIState {
   centerView: "chart" | "data";
 }
 
+export interface ChartConfig {
+  /** Input: dataset → generated option (the base). */
+  binding?: DatasetBinding;
+  /** Manual, user-authored modifications deep-merged onto the generated base. */
+  overrides: Record<string, unknown>;
+  theme?: string;
+  renderer: "canvas" | "svg";
+}
+
 export interface ProjectDocument {
   id: string;
   version: string;
   metadata: ProjectMetadata;
   datasets: DatasetDocument[];
-  bindings: DatasetBinding[];
   transforms: TransformDocument[];
-  chart: {
-    option: Record<string, unknown>;
-    theme?: string;
-    renderer?: "canvas" | "svg";
-  };
+  chart: ChartConfig;
   uiState?: Partial<UIState>;
 }
 
@@ -123,4 +127,4 @@ export const DEFAULT_UI_STATE: UIState = {
   centerView: "chart",
 };
 
-export const SCHEMA_VERSION = "1.0.0";
+export const SCHEMA_VERSION = "2.0.0";

@@ -92,8 +92,7 @@ export function Toolbar() {
   const toggleMode = useUIStore((s) => s.toggleMode);
   const openCommandPalette = useUIStore((s) => s.openCommandPalette);
 
-  const bindings = currentProject?.bindings ?? [];
-  const activeChartType = bindings.length > 0 ? bindings[0].chartType : null;
+  const activeChartType = currentProject?.chart.binding?.chartType ?? null;
 
   const undo = useProjectStore((s) => s.undo);
   const redo = useProjectStore((s) => s.redo);
@@ -228,8 +227,8 @@ export function Toolbar() {
 
           <Separator orientation="vertical" className="h-5 mx-1" />
 
-          <ToolbarButton icon={Undo} label={t("toolbar.undo")} onClick={undo} disabled={!canUndo()} />
-          <ToolbarButton icon={Redo} label={t("toolbar.redo")} onClick={redo} disabled={!canRedo()} />
+          <ToolbarButton icon={Undo} label={t("toolbar.undo")} onClick={undo} disabled={!canUndo} />
+          <ToolbarButton icon={Redo} label={t("toolbar.redo")} onClick={redo} disabled={!canRedo} />
         </div>
 
         {/* Right section: Mode, Theme, Export, Command Palette */}

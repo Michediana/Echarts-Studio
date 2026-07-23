@@ -15,10 +15,15 @@ export default function App() {
   const createProject = useProjectStore((s) => s.createProject);
   const undo = useProjectStore((s) => s.undo);
   const redo = useProjectStore((s) => s.redo);
+  const loadRecentProjects = useProjectStore((s) => s.loadRecentProjects);
 
   useEffect(() => {
     applyThemeClass(theme);
   }, [theme]);
+
+  useEffect(() => {
+    loadRecentProjects();
+  }, [loadRecentProjects]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

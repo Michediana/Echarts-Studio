@@ -26,6 +26,8 @@ interface PropertyFieldProps {
   schema: PropertySchema;
   value: unknown;
   onChange: (path: string, value: unknown) => void;
+  /** Restore the generated value by removing the override at this path. */
+  onReset?: (path: string) => void;
 }
 
 function getValueAtPath(obj: Record<string, unknown>, path: string): unknown {
@@ -50,13 +52,14 @@ function serializeJsonValue(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
-export function PropertyField({ path, schema, value, onChange }: PropertyFieldProps) {
+export function PropertyField({ path, schema, value, onChange, onReset }: PropertyFieldProps) {
   const effectiveValue = value !== undefined ? value : schema.defaultValue;
   const hasChanged = value !== undefined && value !== schema.defaultValue;
 
   const handleReset = useCallback(() => {
-    onChange(path, schema.defaultValue);
-  }, [path, schema.defaultValue, onChange]);
+    if (onReset) onReset(path);
+    else onChange(path, schema.defaultValue);
+  }, [path, schema.defaultValue, onChange, onReset]);
 
   const fieldId = useMemo(() => `prop-${path.replace(/[\[\].]/g, "-")}`, [path]);
 

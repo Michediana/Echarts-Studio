@@ -1,4 +1,5 @@
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 
 use base64::{engine::general_purpose, Engine as _};
@@ -46,8 +47,16 @@ fn write_project(path: String, content: String) -> Result<(), String> {
             .map_err(|e| format!("Failed to create parent directory: {e}"))?;
     }
     let tmp_path = path_obj.with_extension("json.tmp");
-    fs::write(&tmp_path, &content)
-        .map_err(|e| format!("Failed to write temp file: {e}"))?;
+    {
+        // Flush and fsync the temp file *before* renaming, so an abrupt crash
+        // can never leave the rename ahead of the data hitting disk.
+        let mut file = fs::File::create(&tmp_path)
+            .map_err(|e| format!("Failed to create temp file: {e}"))?;
+        file.write_all(content.as_bytes())
+            .map_err(|e| format!("Failed to write temp file: {e}"))?;
+        file.sync_all()
+            .map_err(|e| format!("Failed to sync temp file: {e}"))?;
+    }
     fs::rename(&tmp_path, &path_obj)
         .map_err(|e| format!("Failed to rename temp file: {e}"))?;
     Ok(())

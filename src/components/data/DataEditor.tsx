@@ -116,6 +116,7 @@ export default function DataEditor() {
   const addDataset = useProjectStore((s) => s.addDataset);
   const removeDataset = useProjectStore((s) => s.removeDataset);
   const updateDatasetBinding = useProjectStore((s) => s.updateDatasetBinding);
+  const clearBinding = useProjectStore((s) => s.clearBinding);
 
   const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null);
   const [editingCell, setEditingCell] = useState<CellPosition | null>(null);
@@ -230,12 +231,10 @@ export default function DataEditor() {
       if (aVal === null) return 1;
       if (bVal === null) return -1;
 
-      let cmp = 0;
-      if (typeof aVal === "number" && typeof bVal === "number") {
-        cmp = aVal - bVal;
-      } else {
-        cmp = String(aVal).localeCompare(String(bVal));
-      }
+      const cmp =
+        typeof aVal === "number" && typeof bVal === "number"
+          ? aVal - bVal
+          : String(aVal).localeCompare(String(bVal));
       return sortState.dir === "asc" ? cmp : -cmp;
     });
   }, [dataset, sortState]);
@@ -264,7 +263,8 @@ export default function DataEditor() {
 
   const currentBinding = useMemo<DatasetBinding | null>(() => {
     if (!currentProject || !dataset) return null;
-    return currentProject.bindings?.find((b) => b.datasetId === dataset.id) ?? null;
+    const binding = currentProject.chart.binding ?? null;
+    return binding && binding.datasetId === dataset.id ? binding : null;
   }, [currentProject, dataset]);
 
   const hasBinding = currentBinding !== null && (
@@ -278,7 +278,9 @@ export default function DataEditor() {
   const toggleBinding = useCallback(() => {
     if (!dataset || !currentProject) return;
     if (currentBinding) {
-      updateDatasetBinding(dataset.id, { ...currentBinding, series: [], pieNameColumnId: null, pieValueColumnId: null });
+      // Disabling the binding removes the generator entirely; the chart then
+      // renders from overrides alone.
+      clearBinding();
     } else {
       updateDatasetBinding(dataset.id, {
         id: uuid(),
@@ -290,7 +292,7 @@ export default function DataEditor() {
         pieValueColumnId: null,
       });
     }
-  }, [dataset, currentProject, currentBinding, updateDatasetBinding]);
+  }, [dataset, currentProject, currentBinding, updateDatasetBinding, clearBinding]);
 
   const setXAxisColumn = useCallback(
     (colId: string) => {

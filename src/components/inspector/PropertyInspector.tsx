@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useUIStore } from "@/stores/uiStore";
+import { resolveOption } from "@/lib/chart/resolveOption";
 import { getOptionSchema, searchProperties } from "@/lib/schema/registry";
 import type { PropertyCategory, PropertySchema } from "@/types/schema";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -53,61 +54,17 @@ function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
   return current;
 }
 
-function setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): Record<string, unknown> {
-  const parts = path.replace(/\[(\d+)\]/g, ".$1").split(".");
-  const result = { ...obj };
-  let current: Record<string, unknown> = result;
-
-  for (let i = 0; i < parts.length - 1; i++) {
-    const part = parts[i];
-    const nextPart = parts[i + 1];
-    const isNextIndex = /^\d+$/.test(nextPart);
-
-    if (Array.isArray(current[part])) {
-      current[part] = [...(current[part] as unknown[])];
-      current = current[part] as Record<string, unknown>;
-    } else if (typeof current[part] === "object" && current[part] !== null) {
-      current[part] = { ...(current[part] as Record<string, unknown>) };
-      current = current[part] as Record<string, unknown>;
-    } else {
-      const newObj: Record<string, unknown> = isNextIndex ? ([] as unknown as Record<string, unknown>) : {};
-      current[part] = newObj;
-      current = newObj;
-    }
-  }
-
-  const lastPart = parts[parts.length - 1];
-  if (value === undefined) {
-    if (Array.isArray(current)) {
-      current.splice(Number(lastPart), 1);
-    } else {
-      const { [lastPart]: _, ...rest } = current;
-      Object.assign(current, rest);
-    }
-  } else {
-    if (Array.isArray(current)) {
-      const idx = Number(lastPart);
-      const newArr = [...current];
-      newArr[idx] = value;
-      current.length = 0;
-      newArr.forEach((v) => current.push(v));
-    } else {
-      current[lastPart] = value;
-    }
-  }
-
-  return result;
-}
-
 function PropertiesPanel({
   categories,
   option,
   onPropertyChange,
+  onPropertyReset,
   searchQuery,
 }: {
   categories: PropertyCategory[];
   option: Record<string, unknown>;
   onPropertyChange: (path: string, value: unknown) => void;
+  onPropertyReset: (path: string) => void;
   searchQuery: string;
 }) {
   const t = useT();
@@ -139,6 +96,7 @@ function PropertiesPanel({
             schema={prop}
             value={getNestedValue(option, prop.path)}
             onChange={onPropertyChange}
+            onReset={onPropertyReset}
           />
         ))}
       </div>
@@ -170,6 +128,7 @@ function PropertiesPanel({
                 schema={prop}
                 value={getNestedValue(option, prop.path)}
                 onChange={onPropertyChange}
+                onReset={onPropertyReset}
               />
             ))}
           </AccordionContent>
@@ -184,13 +143,20 @@ const EMPTY_OPTION: Record<string, unknown> = {};
 export function PropertyInspector() {
   const t = useT();
   const currentProject = useProjectStore((s) => s.currentProject);
-  const updateChartOption = useProjectStore((s) => s.updateChartOption);
+  const setOptionOverride = useProjectStore((s) => s.setOptionOverride);
+  const setOptionOverrides = useProjectStore((s) => s.setOptionOverrides);
+  const resetOptionOverride = useProjectStore((s) => s.resetOptionOverride);
   const inspectorTab = useUIStore((s) => s.inspectorTab);
   const setInspectorTab = useUIStore((s) => s.setInspectorTab);
   const selectedNodePath = useUIStore((s) => s.selectedNodePath);
   const setSelectedNodePath = useUIStore((s) => s.setSelectedNodePath);
 
-  const option = (currentProject?.chart.option ?? EMPTY_OPTION) as Record<string, unknown>;
+  // The inspector reads the resolved option (generated base + overrides) so it
+  // shows the values actually rendered; edits are stored as overrides only.
+  const option = useMemo(
+    () => (currentProject ? (resolveOption(currentProject) as Record<string, unknown>) : EMPTY_OPTION),
+    [currentProject],
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -198,10 +164,16 @@ export function PropertyInspector() {
 
   const handlePropertyChange = useCallback(
     (path: string, value: unknown) => {
-      const updated = setNestedValue(option, path, value);
-      updateChartOption(updated);
+      setOptionOverride(path, value);
     },
-    [option, updateChartOption]
+    [setOptionOverride]
+  );
+
+  const handlePropertyReset = useCallback(
+    (path: string) => {
+      resetOptionOverride(path);
+    },
+    [resetOptionOverride]
   );
 
   const handleTreeViewSelect = useCallback(
@@ -214,17 +186,9 @@ export function PropertyInspector() {
   );
 
   const handleResetAll = useCallback(() => {
-    const defaults: Record<string, unknown> = {};
-    for (const cat of categories) {
-      for (const prop of cat.properties) {
-        if (prop.defaultValue !== undefined) {
-          const updated = setNestedValue(defaults, prop.path, prop.defaultValue);
-          Object.assign(defaults, updated);
-        }
-      }
-    }
-    updateChartOption(defaults);
-  }, [categories, updateChartOption]);
+    // Clearing all overrides returns every property to its generated value.
+    setOptionOverrides({});
+  }, [setOptionOverrides]);
 
   return (
     <div className="flex flex-col h-full">
@@ -285,6 +249,7 @@ export function PropertyInspector() {
                 categories={categories}
                 option={option}
                 onPropertyChange={handlePropertyChange}
+                onPropertyReset={handlePropertyReset}
                 searchQuery={searchQuery}
               />
             </div>

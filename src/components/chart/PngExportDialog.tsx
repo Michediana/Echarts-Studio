@@ -1,4 +1,5 @@
 import { useState, useCallback, type RefObject } from "react";
+import type ReactECharts from "echarts-for-react";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +26,7 @@ const DPI_OPTIONS = [72, 96, 150, 300, 600];
 interface PngExportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  chartRef: RefObject<any>;
+  chartRef: RefObject<ReactECharts | null>;
 }
 
 export default function PngExportDialog({

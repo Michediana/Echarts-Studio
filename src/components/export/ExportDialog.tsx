@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import type ReactECharts from "echarts-for-react";
 import {
   Dialog,
   DialogContent,
@@ -8,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useProjectStore } from "@/stores/projectStore";
+import { resolveOption } from "@/lib/chart/resolveOption";
 import {
   Image,
   FileCode,
@@ -22,7 +24,7 @@ import { useT } from "@/lib/i18n/context";
 interface ExportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  chartRef: React.RefObject<any>;
+  chartRef: React.RefObject<ReactECharts | null>;
 }
 
 function triggerDownload(dataUrl: string, filename: string) {
@@ -88,13 +90,13 @@ export default function ExportDialog({
 
   const handleExportJson = useCallback(() => {
     if (!currentProject) return;
-    const json = JSON.stringify(currentProject.chart.option, null, 2);
+    const json = JSON.stringify(resolveOption(currentProject), null, 2);
     triggerBlobDownload(json, "chart-config.json", "application/json");
   }, [currentProject]);
 
   const handleExportHtml = useCallback(() => {
     if (!currentProject) return;
-    const optionJson = JSON.stringify(currentProject.chart.option, null, 2);
+    const optionJson = JSON.stringify(resolveOption(currentProject), null, 2);
 
     const html = `<!DOCTYPE html>
 <html lang="en">
