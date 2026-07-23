@@ -4,7 +4,6 @@ import {
   useRef,
   useMemo,
   useEffect,
-  type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { v4 as uuid } from "uuid";
 import Papa from "papaparse";
@@ -55,6 +54,7 @@ import {
   ClipboardPaste,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/context";
+import { readClipboardText, writeClipboardText } from "@/lib/utils/clipboard";
 
 interface CellPosition {
   rowId: string;
@@ -152,6 +152,19 @@ export default function DataEditor() {
   const editInputRef = useRef<HTMLInputElement>(null);
   const headerInputRef = useRef<HTMLInputElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
+  // Off-screen textarea that owns keyboard focus for the grid. Keeping a real
+  // editable element focused is what makes copy/cut/paste events fire reliably
+  // inside macOS WKWebView (a non-editable table never receives them).
+  const clipboardProxyRef = useRef<HTMLTextAreaElement>(null);
+
+  const focusGrid = useCallback(() => {
+    const ta = clipboardProxyRef.current;
+    if (!ta) return;
+    ta.focus();
+    // A non-empty selection keeps the OS "Copy"/"Cut" commands enabled so the
+    // corresponding DOM events fire.
+    ta.select();
+  }, []);
 
   const dataset = useMemo<DatasetDocument | null>(() => {
     if (!currentProject || !selectedDatasetId) return null;
@@ -232,26 +245,6 @@ export default function DataEditor() {
     el.addEventListener("selectstart", handler);
     return () => el.removeEventListener("selectstart", handler);
   }, []);
-
-  const sortedRows = useMemo(() => {
-    if (!dataset) return [];
-    if (!sortState) return dataset.rows;
-
-    return [...dataset.rows].sort((a, b) => {
-      const aVal = a.values[sortState.colId];
-      const bVal = b.values[sortState.colId];
-
-      if (aVal === null && bVal === null) return 0;
-      if (aVal === null) return 1;
-      if (bVal === null) return -1;
-
-      const cmp =
-        typeof aVal === "number" && typeof bVal === "number"
-          ? aVal - bVal
-          : String(aVal).localeCompare(String(bVal));
-      return sortState.dir === "asc" ? cmp : -cmp;
-    });
-  }, [dataset, sortState]);
 
   const validationErrors = useMemo(() => {
     if (!dataset) return new Map<string, boolean>();
@@ -474,10 +467,10 @@ export default function DataEditor() {
       // Defer move so editingCell state is cleared first
       requestAnimationFrame(() => {
         moveActiveCell(dRow, dCol);
-        tableRef.current?.focus();
+        focusGrid();
       });
     },
-    [commitEdit, moveActiveCell],
+    [commitEdit, moveActiveCell, focusGrid],
   );
 
   // ── Spreadsheet: Clipboard ───────────────────────────────────
@@ -503,18 +496,54 @@ export default function DataEditor() {
     return result;
   }, [dataset, selectionRange, clampRange, gridRows, gridCols]);
 
-  const handleCopy = useCallback(() => {
+  const buildSelectionTSV = useCallback(() => {
     const data = getSelectedCellsData();
-    if (data.length === 0) return;
-    const tsv = data.map((row) => row.map((v) => (v === null ? "" : String(v))).join("\t")).join("\n");
-    navigator.clipboard.writeText(tsv).catch(() => {});
-    setClipboard({ data, mode: "copy" });
+    const tsv = data
+      .map((row) => row.map((v) => (v === null ? "" : String(v))).join("\t"))
+      .join("\n");
+    return { data, tsv };
   }, [getSelectedCellsData]);
 
+  const handleCopy = useCallback(() => {
+    const { data, tsv } = buildSelectionTSV();
+    if (data.length === 0) return;
+    void writeClipboardText(tsv);
+    setClipboard({ data, mode: "copy" });
+  }, [buildSelectionTSV]);
+
   const handleCut = useCallback(() => {
-    handleCopy();
-    setClipboard((prev) => (prev ? { ...prev, mode: "cut" } : null));
-  }, [handleCopy]);
+    const { data, tsv } = buildSelectionTSV();
+    if (data.length === 0) return;
+    void writeClipboardText(tsv);
+    setClipboard({ data, mode: "cut" });
+  }, [buildSelectionTSV]);
+
+  // DOM clipboard events fired by the OS Cut/Copy/Paste commands. Writing to
+  // `e.clipboardData` synchronously is the reliable native path in WKWebView;
+  // the plugin write is a belt-and-suspenders backup for other webviews.
+  const handleCopyEvent = useCallback(
+    (e: React.ClipboardEvent) => {
+      const { data, tsv } = buildSelectionTSV();
+      if (data.length === 0) return;
+      e.preventDefault();
+      e.clipboardData.setData("text/plain", tsv);
+      void writeClipboardText(tsv);
+      setClipboard({ data, mode: "copy" });
+    },
+    [buildSelectionTSV],
+  );
+
+  const handleCutEvent = useCallback(
+    (e: React.ClipboardEvent) => {
+      const { data, tsv } = buildSelectionTSV();
+      if (data.length === 0) return;
+      e.preventDefault();
+      e.clipboardData.setData("text/plain", tsv);
+      void writeClipboardText(tsv);
+      setClipboard({ data, mode: "cut" });
+    },
+    [buildSelectionTSV],
+  );
 
   const handleDeleteSelected = useCallback(() => {
     if (!dataset || !selectionRange) return;
@@ -537,20 +566,21 @@ export default function DataEditor() {
     persistDataset({ ...dataset, rows: updatedRows });
   }, [dataset, selectionRange, clampRange, persistDataset]);
 
-  const handlePaste = useCallback(async () => {
+  const applyPasteText = useCallback(async (text: string | null) => {
     if (!dataset || !activeCell) return;
 
     let parsed: string[][] | null = null;
 
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text) {
-        parsed = text.split("\n").filter((line) => line.length > 0 || text.includes("\n")).map((line) =>
-          line.split("\t").map((cell) => cell.replace(/\r$/, "")),
-        );
-      }
-    } catch {
-      // System clipboard unavailable (common on macOS WKWebView) – fall back to internal clipboard
+    // Prefer the text handed to us by the native paste event; otherwise read the
+    // system clipboard (Tauri plugin, then web API).
+    const source = text ?? (await readClipboardText());
+    if (source) {
+      const normalized = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      const lines = normalized.split("\n");
+      // Drop a single trailing empty line (common when a TSV ends with a newline)
+      // but keep genuine blank cells/rows in the middle.
+      if (lines.length > 1 && lines[lines.length - 1] === "") lines.pop();
+      parsed = lines.map((line) => line.split("\t"));
     }
 
     if (!parsed && clipboard?.data) {
@@ -598,6 +628,38 @@ export default function DataEditor() {
     const endCol = Math.min(startCol + (rows[0]?.length ?? 1) - 1, dataset.columns.length - 1);
     selectCell(endRow, endCol);
   }, [dataset, activeCell, rowIndexMap, colIndexMap, clipboard, persistDataset, selectCell]);
+
+  const handlePaste = useCallback(() => {
+    void applyPasteText(null);
+  }, [applyPasteText]);
+
+  const handlePasteEvent = useCallback(
+    (e: React.ClipboardEvent) => {
+      e.preventDefault();
+      const text = e.clipboardData.getData("text/plain");
+      void applyPasteText(text || null);
+    },
+    [applyPasteText],
+  );
+
+  // Mirror the current selection into the proxy textarea and keep it selected,
+  // so the OS Copy/Cut commands stay enabled and their DOM events keep firing.
+  useEffect(() => {
+    const ta = clipboardProxyRef.current;
+    if (!ta || editingCell) return;
+    const { tsv } = buildSelectionTSV();
+    ta.value = tsv.length > 0 ? tsv : " ";
+    if (document.activeElement === ta) ta.select();
+  }, [selectionRange, dataset, editingCell, buildSelectionTSV]);
+
+  // Keep the active cell scrolled into view during keyboard navigation.
+  useEffect(() => {
+    if (!activeCellPos) return;
+    const td = tableRef.current?.querySelector(
+      `td[data-row-index="${activeCellPos.row}"][data-col-index="${activeCellPos.col}"]`,
+    ) as HTMLElement | null;
+    td?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeCellPos]);
 
   // ── Spreadsheet: Mouse handlers ──────────────────────────────
 
@@ -647,6 +709,10 @@ export default function DataEditor() {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag !== "INPUT" && tag !== "TEXTAREA") {
         e.preventDefault();
+        // preventDefault suppresses the native focus, so move keyboard focus to
+        // the proxy explicitly. This is what makes a single click enough to then
+        // type/navigate — no double-click required.
+        focusGrid();
       }
       document.body.style.userSelect = "none";
       if (editingCell) {
@@ -681,7 +747,7 @@ export default function DataEditor() {
 
       dragStartRef.current = { row, col, x: e.clientX, y: e.clientY, onBorder };
     },
-    [editingCell, commitEdit, activeCellPos, selectCell, extendSelection, selectionRange, isInRange, isOnCellBorder, isOnFillHandle, clampRange],
+    [editingCell, commitEdit, activeCellPos, selectCell, extendSelection, selectionRange, isInRange, isOnCellBorder, isOnFillHandle, clampRange, focusGrid],
   );
 
   const handleCellMouseMove = useCallback(
@@ -904,7 +970,7 @@ export default function DataEditor() {
   // ── Spreadsheet: Context menu ─────────────────────────────────
 
   const handleContextMenu = useCallback(
-    (row: number, col: number, e: React.MouseEvent) => {
+    (row: number, col: number, _e: React.MouseEvent) => {
       const pos = positionToCell(row, col);
       setContextMenuCell(pos);
       const alreadySelected = selectionRange && isInRange(row, col, selectionRange);
@@ -995,7 +1061,7 @@ export default function DataEditor() {
         if (e.key === "Escape") {
           e.preventDefault();
           cancelEdit();
-          tableRef.current?.focus();
+          focusGrid();
         } else if (e.key === "Enter") {
           e.preventDefault();
           commitEditAndMove(1, 0);
@@ -1007,6 +1073,11 @@ export default function DataEditor() {
       }
 
       const mod = e.metaKey || e.ctrlKey;
+
+      // Copy/Cut/Paste are handled by the native DOM clipboard events on the
+      // proxy textarea (see handleCopyEvent / handleCutEvent / handlePasteEvent),
+      // so we intentionally do NOT intercept Cmd/Ctrl+C/X/V here to avoid running
+      // the operation twice.
 
       // Navigation
       if (e.key === "ArrowDown") { e.preventDefault(); moveActiveCell(1, 0, e.shiftKey); return; }
@@ -1025,11 +1096,6 @@ export default function DataEditor() {
         return;
       }
 
-      // Clipboard
-      if (mod && e.key === "c") { e.preventDefault(); handleCopy(); return; }
-      if (mod && e.key === "x") { e.preventDefault(); handleCut(); return; }
-      if (mod && e.key === "v") { e.preventDefault(); handlePaste(); return; }
-
       // Delete
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
@@ -1045,9 +1111,8 @@ export default function DataEditor() {
       }
     },
     [
-      editingCell, activeCell, dataset, cancelEdit, commitEditAndMove,
-      moveActiveCell, startEditing, handleCopy, handleCut, handlePaste,
-      handleDeleteSelected,
+      editingCell, activeCell, dataset, cancelEdit, commitEditAndMove, focusGrid,
+      moveActiveCell, startEditing, handleDeleteSelected,
     ],
   );
 
@@ -1191,15 +1256,32 @@ export default function DataEditor() {
 
   const handleSort = useCallback(
     (colId: string) => {
-      setSortState((prev) => {
-        if (prev?.colId === colId) {
-          if (prev.dir === "asc") return { colId, dir: "desc" };
-          return null;
-        }
-        return { colId, dir: "asc" };
+      if (!dataset) return;
+      const dir: "asc" | "desc" =
+        sortState?.colId === colId && sortState.dir === "asc" ? "desc" : "asc";
+
+      const sorted = [...dataset.rows].sort((a, b) => {
+        const aVal = a.values[colId];
+        const bVal = b.values[colId];
+        if (aVal === null && bVal === null) return 0;
+        if (aVal === null) return 1;
+        if (bVal === null) return -1;
+        const cmp =
+          typeof aVal === "number" && typeof bVal === "number"
+            ? aVal - bVal
+            : String(aVal).localeCompare(String(bVal));
+        return dir === "asc" ? cmp : -cmp;
       });
+
+      // Sorting reorders the underlying rows (Excel semantics) so the visible
+      // order always matches storage order — this keeps cell selection, paste
+      // and fill coherent instead of drifting out of sync with a view-only sort.
+      persistDataset({ ...dataset, rows: sorted });
+      setSortState({ colId, dir });
+      setActiveCell(null);
+      setSelectionRange(null);
     },
-    [],
+    [dataset, sortState, persistDataset],
   );
 
   const handleCSVImport = useCallback(
@@ -1553,6 +1635,30 @@ export default function DataEditor() {
         )}
       </div>
 
+      {/* Off-screen proxy that owns the grid's keyboard focus and captures the
+          native copy/cut/paste events (reliable inside macOS WKWebView). */}
+      <textarea
+        ref={clipboardProxyRef}
+        aria-hidden="true"
+        tabIndex={-1}
+        defaultValue=" "
+        onChange={() => {}}
+        onKeyDown={handleTableKeyDown}
+        onCopy={handleCopyEvent}
+        onCut={handleCutEvent}
+        onPaste={handlePasteEvent}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: -9999,
+          width: 1,
+          height: 1,
+          opacity: 0,
+          pointerEvents: "none",
+          resize: "none",
+        }}
+      />
+
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
           <ContextMenu>
@@ -1560,9 +1666,6 @@ export default function DataEditor() {
               <table
                 ref={tableRef}
                 className={`w-full border-collapse text-sm ${isTableGrabbing ? "cursor-grabbing [&_*]:cursor-grabbing" : ""}`}
-                tabIndex={0}
-                onKeyDown={handleTableKeyDown}
-                onPaste={handlePaste}
               >
             <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
               <tr>
@@ -1647,7 +1750,7 @@ export default function DataEditor() {
               </tr>
             </thead>
             <tbody>
-              {sortedRows.map((row, rowIdx) => (
+              {gridRows.map((row, rowIdx) => (
                 <tr key={row.id} className="group hover:bg-muted/30">
                   <td className="border border-border px-1 py-1 text-center text-xs text-muted-foreground">
                     {rowIdx + 1}
@@ -1713,7 +1816,7 @@ export default function DataEditor() {
                               if (e.key === "Enter") commitEditAndMove(1, 0);
                               if (e.key === "Escape") {
                                 cancelEdit();
-                                tableRef.current?.focus();
+                                focusGrid();
                               }
                               if (e.key === "Tab") {
                                 e.preventDefault();
