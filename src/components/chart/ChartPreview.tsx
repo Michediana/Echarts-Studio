@@ -1,9 +1,39 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import ReactECharts from "echarts-for-react";
-import { RefreshCw, Maximize2, Minimize2, FileImage, AlertCircle } from "lucide-react";
+import {
+  RefreshCw,
+  Maximize2,
+  Minimize2,
+  FileImage,
+  AlertCircle,
+  Link2,
+  Unlink,
+  RotateCcw,
+  Table2,
+  Database,
+} from "lucide-react";
 import { useProjectStore } from "@/stores/projectStore";
 import { useUIStore } from "@/stores/uiStore";
 import { resolveOption } from "@/lib/chart/resolveOption";
+import { countOverrides, getChartMode } from "@/lib/chart/overrideStatus";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import PngExportDialog from "./PngExportDialog";
@@ -109,12 +139,15 @@ export default function ChartPreview() {
     <div
       ref={containerRef}
       className={cn(
-        "relative overflow-hidden bg-background",
+        "flex flex-col bg-background",
         isFullscreen
           ? "fixed inset-0 z-50 h-screen w-screen rounded-none border-0"
-          : "h-full w-full rounded-md border border-border"
+          : "h-full w-full overflow-hidden rounded-md border border-border"
       )}
     >
+      {!isFullscreen && <ChartStatusBar />}
+
+      <div className="relative flex-1 overflow-hidden">
       <ChartErrorBoundary
         onError={(err) => {
           console.error("Chart render error:", err);
@@ -185,6 +218,7 @@ export default function ChartPreview() {
         open={pngExportOpen}
         onOpenChange={setPngExportOpen}
       />
+      </div>
     </div>
   );
 }
@@ -216,6 +250,159 @@ function ToolbarButton({
       <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-primary px-2 py-1 text-xs text-primary-foreground opacity-0 shadow-md transition-opacity group-hover:opacity-100">
         {tooltip}
       </div>
+    </div>
+  );
+}
+
+/**
+ * A compact strip above the chart that makes the two invisible truths visible:
+ * which dataset feeds the chart (or that it's a detached template), and how many
+ * manual customizations sit on top — with one-click ways to switch source,
+ * reattach, or reset.
+ */
+function ChartStatusBar() {
+  const t = useT();
+  const project = useProjectStore((s) => s.currentProject);
+  const setSourceDataset = useProjectStore((s) => s.setSourceDataset);
+  const clearOverrides = useProjectStore((s) => s.clearOverrides);
+  const setCenterView = useUIStore((s) => s.setCenterView);
+
+  const [resetOpen, setResetOpen] = useState(false);
+  const [reattachOpen, setReattachOpen] = useState(false);
+
+  const mode = useMemo(() => (project ? getChartMode(project) : "empty"), [project]);
+  const overrideCount = useMemo(
+    () => (project ? countOverrides(project.chart.overrides) : 0),
+    [project],
+  );
+
+  if (!project) return null;
+
+  const binding = project.chart.binding;
+  const datasets = project.datasets;
+  const firstDatasetId = datasets[0]?.id ?? null;
+
+  const resetButton = overrideCount > 0 && (
+    <button
+      className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      onClick={() => setResetOpen(true)}
+    >
+      <RotateCcw className="h-3 w-3" />
+      {t("chartStatus.reset")}
+    </button>
+  );
+
+  return (
+    <div className="flex h-8 shrink-0 items-center gap-2 border-b border-border bg-muted/30 px-3 text-xs">
+      {mode === "bound" && binding && (
+        <>
+          <Link2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+          <span className="shrink-0 text-muted-foreground">{t("chartStatus.source")}</span>
+          <Select value={binding.datasetId} onValueChange={setSourceDataset}>
+            <SelectTrigger className="h-6 w-auto min-w-36 gap-1 border-0 bg-transparent px-1.5 text-xs font-medium hover:bg-accent focus:ring-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {datasets.map((d) => (
+                <SelectItem key={d.id} value={d.id} className="text-xs">
+                  {d.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Badge variant="secondary" className="shrink-0 text-[10px]">
+            {binding.chartType}
+          </Badge>
+          <button
+            className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            onClick={() => setCenterView("data")}
+          >
+            <Table2 className="h-3 w-3" />
+            {t("chartStatus.editMapping")}
+          </button>
+        </>
+      )}
+
+      {mode === "detached" && (
+        <>
+          <Unlink className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+          <span className="text-muted-foreground">{t("chartStatus.detached")}</span>
+          {firstDatasetId && (
+            <button
+              className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              onClick={() => setReattachOpen(true)}
+            >
+              <Link2 className="h-3 w-3" />
+              {t("chartStatus.reattach")}
+            </button>
+          )}
+        </>
+      )}
+
+      {mode === "empty" && (
+        <>
+          <Database className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="text-muted-foreground">{t("chartStatus.empty")}</span>
+          {firstDatasetId && (
+            <button
+              className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              onClick={() => setSourceDataset(firstDatasetId)}
+            >
+              <Link2 className="h-3 w-3" />
+              {t("chartStatus.linkData")}
+            </button>
+          )}
+        </>
+      )}
+
+      <div className="flex-1" />
+
+      {overrideCount > 0 && (
+        <span className="shrink-0 text-[11px] text-muted-foreground">
+          {t("chartStatus.customizations", { count: overrideCount })}
+        </span>
+      )}
+      {resetButton}
+
+      <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("chartStatus.resetTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("chartStatus.resetDesc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("chartStatus.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                clearOverrides();
+                setResetOpen(false);
+              }}
+            >
+              {t("chartStatus.reset")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={reattachOpen} onOpenChange={setReattachOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("chartStatus.reattachTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("chartStatus.reattachDesc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("chartStatus.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (firstDatasetId) setSourceDataset(firstDatasetId);
+                setReattachOpen(false);
+              }}
+            >
+              {t("chartStatus.reattach")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

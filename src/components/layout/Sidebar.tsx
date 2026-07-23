@@ -13,6 +13,7 @@ import {
   PieChart,
   ScatterChart,
   Activity,
+  Link2,
   X,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,9 +24,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useProjectStore } from "@/stores/projectStore";
 import { useUIStore } from "@/stores/uiStore";
+import { countOverrides } from "@/lib/chart/overrideStatus";
 import { useT } from "@/lib/i18n/context";
 import { chartTemplates, type ChartTemplate } from "@/templates/index";
 import type { DatasetDocument, ProjectDocument } from "@/types/project";
@@ -114,6 +126,7 @@ export function Sidebar() {
           <ScrollArea className="h-full">
             <DataTab
               datasets={currentProject?.datasets ?? []}
+              boundDatasetId={currentProject?.chart.binding?.datasetId ?? null}
               onAddDataset={addDataset}
             />
           </ScrollArea>
@@ -269,10 +282,11 @@ function ProjectTab({ project, onUpdateMetadata }: ProjectTabProps) {
 
 interface DataTabProps {
   datasets: DatasetDocument[];
+  boundDatasetId: string | null;
   onAddDataset: (dataset: DatasetDocument) => void;
 }
 
-function DataTab({ datasets, onAddDataset }: DataTabProps) {
+function DataTab({ datasets, boundDatasetId, onAddDataset }: DataTabProps) {
   const t = useT();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const setCenterView = useUIStore((s) => s.setCenterView);
@@ -376,7 +390,18 @@ function DataTab({ datasets, onAddDataset }: DataTabProps) {
               <CardContent className="flex items-center gap-3 p-2.5">
                 <Database className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{ds.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-sm font-medium">{ds.name}</p>
+                    {ds.id === boundDatasetId && (
+                      <Badge
+                        variant="secondary"
+                        className="shrink-0 gap-0.5 border-green-500/30 bg-green-500/10 px-1.5 py-0 text-[9px] font-medium text-green-600 dark:text-green-400"
+                      >
+                        <Link2 className="h-2.5 w-2.5" />
+                        {t("sidebar.inUse")}
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-[11px] text-muted-foreground">
                     {t("sidebar.rowsColumns", { rows: ds.rows.length, cols: ds.columns.length })}
                   </p>
@@ -400,13 +425,33 @@ interface TemplatesTabProps {
 
 function TemplatesTab({ onApplyTemplate }: TemplatesTabProps) {
   const t = useT();
-  const handleApply = useCallback(
+  const currentProject = useProjectStore((s) => s.currentProject);
+  const [pending, setPending] = useState<ChartTemplate | null>(null);
+
+  const hasExistingChart =
+    !!currentProject &&
+    (!!currentProject.chart.binding || countOverrides(currentProject.chart.overrides) > 0);
+
+  const apply = useCallback(
     (template: ChartTemplate) => {
       onApplyTemplate(template.option);
       // Applying a template intentionally detaches the chart from the dataset.
       toast.info(t("sidebar.templateAppliedDetached"));
     },
     [onApplyTemplate, t],
+  );
+
+  const handleApply = useCallback(
+    (template: ChartTemplate) => {
+      // A template replaces the whole chart (and detaches it from the data), so
+      // confirm first whenever there's an existing configuration to lose.
+      if (hasExistingChart) {
+        setPending(template);
+        return;
+      }
+      apply(template);
+    },
+    [hasExistingChart, apply],
   );
 
   return (
@@ -447,6 +492,28 @@ function TemplatesTab({ onApplyTemplate }: TemplatesTabProps) {
           </Card>
         ))}
       </div>
+
+      <AlertDialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("sidebar.templateConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("sidebar.templateConfirmDesc")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("sidebar.templateConfirmCancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pending) apply(pending);
+                setPending(null);
+              }}
+            >
+              {t("sidebar.templateConfirmApply")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

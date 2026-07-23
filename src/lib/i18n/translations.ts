@@ -47,6 +47,26 @@ type TranslationKeys = {
   "sidebar.noDatasetsHint": string;
   "sidebar.rowsColumns": string;
   "sidebar.chartTemplatesCount": string;
+  "sidebar.inUse": string;
+  "sidebar.templateConfirmTitle": string;
+  "sidebar.templateConfirmDesc": string;
+  "sidebar.templateConfirmCancel": string;
+  "sidebar.templateConfirmApply": string;
+
+  // ChartStatusBar
+  "chartStatus.source": string;
+  "chartStatus.editMapping": string;
+  "chartStatus.detached": string;
+  "chartStatus.reattach": string;
+  "chartStatus.empty": string;
+  "chartStatus.linkData": string;
+  "chartStatus.customizations": string;
+  "chartStatus.reset": string;
+  "chartStatus.resetTitle": string;
+  "chartStatus.resetDesc": string;
+  "chartStatus.reattachTitle": string;
+  "chartStatus.reattachDesc": string;
+  "chartStatus.cancel": string;
 
   // BottomPanel
   "bottomPanel.tabJson": string;
@@ -267,6 +287,29 @@ export const translations: Record<Language, TranslationKeys> = {
     "sidebar.noDatasetsHint": "Add one to get started.",
     "sidebar.rowsColumns": "rows · columns",
     "sidebar.chartTemplatesCount": "Chart Templates",
+    "sidebar.inUse": "in use",
+    "sidebar.templateConfirmTitle": "Apply this template?",
+    "sidebar.templateConfirmDesc":
+      "This replaces the current chart and detaches it from your data. Your datasets are kept, but the chart configuration will be lost.",
+    "sidebar.templateConfirmCancel": "Cancel",
+    "sidebar.templateConfirmApply": "Apply template",
+
+    // ChartStatusBar
+    "chartStatus.source": "Data source:",
+    "chartStatus.editMapping": "Edit mapping",
+    "chartStatus.detached": "Custom template — not linked to any data",
+    "chartStatus.reattach": "Link to data",
+    "chartStatus.empty": "No data linked",
+    "chartStatus.linkData": "Link data",
+    "chartStatus.customizations": "{count} customizations",
+    "chartStatus.reset": "Reset",
+    "chartStatus.resetTitle": "Reset customizations?",
+    "chartStatus.resetDesc":
+      "Removes all manual edits and shows the chart exactly as generated from the data. This cannot be undone from here (use Undo).",
+    "chartStatus.reattachTitle": "Link the chart to data?",
+    "chartStatus.reattachDesc":
+      "The chart will be regenerated from your first dataset. Manual series and axes from the template will be replaced by the data.",
+    "chartStatus.cancel": "Cancel",
 
     // BottomPanel
     "bottomPanel.tabJson": "JSON",
@@ -486,6 +529,29 @@ export const translations: Record<Language, TranslationKeys> = {
     "sidebar.noDatasetsHint": "Aggiungine uno per iniziare.",
     "sidebar.rowsColumns": "righe · colonne",
     "sidebar.chartTemplatesCount": "Modelli Grafici",
+    "sidebar.inUse": "in uso",
+    "sidebar.templateConfirmTitle": "Applicare questo modello?",
+    "sidebar.templateConfirmDesc":
+      "Sostituisce il grafico attuale e lo scollega dai dati. I dataset restano, ma la configurazione del grafico andrà persa.",
+    "sidebar.templateConfirmCancel": "Annulla",
+    "sidebar.templateConfirmApply": "Applica modello",
+
+    // ChartStatusBar
+    "chartStatus.source": "Fonte dati:",
+    "chartStatus.editMapping": "Modifica mappatura",
+    "chartStatus.detached": "Modello personalizzato — non collegato ad alcun dato",
+    "chartStatus.reattach": "Collega ai dati",
+    "chartStatus.empty": "Nessun dato collegato",
+    "chartStatus.linkData": "Collega dati",
+    "chartStatus.customizations": "{count} personalizzazioni",
+    "chartStatus.reset": "Azzera",
+    "chartStatus.resetTitle": "Azzerare le personalizzazioni?",
+    "chartStatus.resetDesc":
+      "Rimuove tutte le modifiche manuali e mostra il grafico esattamente come generato dai dati. Da qui non è annullabile (usa Annulla).",
+    "chartStatus.reattachTitle": "Collegare il grafico ai dati?",
+    "chartStatus.reattachDesc":
+      "Il grafico verrà rigenerato dal primo dataset. Serie e assi manuali del modello saranno sostituiti dai dati.",
+    "chartStatus.cancel": "Annulla",
 
     // BottomPanel
     "bottomPanel.tabJson": "JSON",

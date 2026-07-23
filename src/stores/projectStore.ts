@@ -18,6 +18,8 @@ import type {
 import { resolveBaseOption } from "@/lib/chart/resolveOption";
 import { getNested, setNested } from "@/lib/chart/path";
 import { deepEqual } from "@/lib/chart/deepEqual";
+import { pruneStructuralOverrides } from "@/lib/chart/overrideStatus";
+import { buildAutoBinding } from "@/lib/data/autoBinding";
 import { migrateProject } from "@/lib/persistence/migrations";
 
 /*
@@ -187,6 +189,7 @@ interface ProjectStore {
   setOptionOverride: (path: string, value: unknown) => void;
   setOptionOverrides: (overrides: Record<string, unknown>, groupId?: string) => void;
   resetOptionOverride: (path: string) => void;
+  clearOverrides: () => void;
   applyTemplate: (option: Record<string, unknown>) => void;
 
   updateMetadata: (metadata: Partial<ProjectDocument["metadata"]>) => void;
@@ -194,6 +197,7 @@ interface ProjectStore {
   removeDataset: (datasetId: string) => void;
   updateDataset: (datasetId: string, dataset: Partial<DatasetDocument>) => void;
   updateDatasetBinding: (datasetId: string, binding: DatasetBinding) => void;
+  setSourceDataset: (datasetId: string) => void;
   clearBinding: () => void;
   setChartType: (chartType: DatasetBinding["chartType"]) => void;
   setProject: (project: ProjectDocument, filePath?: string | null) => void;
@@ -364,6 +368,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
       });
     },
 
+    clearOverrides: () => {
+      const cp = get().currentProject;
+      if (!cp || Object.keys(cp.chart.overrides).length === 0) return;
+      mutate((draft) => {
+        draft.chart.overrides = {};
+      });
+    },
+
     applyTemplate: (option: Record<string, unknown>) => {
       // Applying a template is the one place where detaching from the dataset is
       // the intended behaviour: overrides become the template and the binding is
@@ -427,9 +439,37 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     },
 
     updateDatasetBinding: (_datasetId: string, binding: DatasetBinding) => {
+      const prev = get().currentProject?.chart.binding;
+      // A change of source dataset or chart type rebuilds the generated base
+      // entirely, so any structural override (series/axes) left from the old
+      // shape would index-merge onto the new base and intertwine. Prune those,
+      // keeping cosmetic overrides. Field tweaks (xAxis, series list, names)
+      // are not structural and preserve overrides as before.
+      const structuralChange =
+        !prev ||
+        prev.datasetId !== binding.datasetId ||
+        prev.chartType !== binding.chartType;
       mutate((draft) => {
         draft.chart.binding = binding;
+        if (structuralChange) {
+          draft.chart.overrides = pruneStructuralOverrides(draft.chart.overrides);
+        }
       }, { groupId: "binding" });
+    },
+
+    setSourceDataset: (datasetId: string) => {
+      const cp = get().currentProject;
+      if (!cp) return;
+      const dataset = cp.datasets.find((d) => d.id === datasetId);
+      if (!dataset) return;
+      if (cp.chart.binding?.datasetId === datasetId) return;
+      // Preserve the current chart type where possible; build a fresh, working
+      // binding for the newly chosen dataset and drop structural overrides.
+      const chartType = cp.chart.binding?.chartType ?? "bar";
+      mutate((draft) => {
+        draft.chart.binding = buildAutoBinding(dataset, chartType);
+        draft.chart.overrides = pruneStructuralOverrides(draft.chart.overrides);
+      });
     },
 
     clearBinding: () => {
@@ -441,20 +481,18 @@ export const useProjectStore = create<ProjectStore>((set, get) => {
     setChartType: (chartType) => {
       mutate((draft) => {
         if (draft.chart.binding) {
+          if (draft.chart.binding.chartType !== chartType) {
+            // The base for series/axes is rebuilt for the new type; drop stale
+            // structural overrides so they don't intertwine with it.
+            draft.chart.overrides = pruneStructuralOverrides(draft.chart.overrides);
+          }
           draft.chart.binding = { ...draft.chart.binding, chartType };
           return;
         }
         const dataset = draft.datasets[0];
         if (!dataset) return;
-        draft.chart.binding = {
-          id: uuid(),
-          datasetId: dataset.id,
-          chartType,
-          xAxisColumnId: dataset.columns[0]?.id ?? null,
-          series: [],
-          pieNameColumnId: null,
-          pieValueColumnId: null,
-        };
+        draft.chart.binding = buildAutoBinding(dataset, chartType);
+        draft.chart.overrides = pruneStructuralOverrides(draft.chart.overrides);
       });
     },
 
