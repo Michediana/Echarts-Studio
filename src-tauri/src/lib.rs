@@ -108,22 +108,90 @@ fn save_recent_projects(app_handle: tauri::AppHandle, projects: Vec<String>) -> 
 }
 
 #[tauri::command]
-fn export_image(path: String, data: String) -> Result<(), String> {
+fn export_image(path: String, data: String, dpi: Option<u32>) -> Result<(), String> {
     let path_obj = PathBuf::from(&path);
     if let Some(parent) = path_obj.parent() {
         fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create parent directory: {e}"))?;
     }
+    let is_png = data.starts_with("data:image/png;base64,");
     let stripped = data
         .strip_prefix("data:image/png;base64,")
         .or_else(|| data.strip_prefix("data:image/svg+xml;base64,"))
         .or_else(|| data.strip_prefix("data:image/jpeg;base64,"))
         .unwrap_or(&data);
-    let bytes = general_purpose::STANDARD
+    let mut bytes = general_purpose::STANDARD
         .decode(stripped)
         .map_err(|e| format!("Failed to decode base64 data: {e}"))?;
+
+    // Embed the DPI as a PNG pHYs chunk so the resolution is carried as
+    // physical-size metadata (print size) without changing the pixel count.
+    if is_png {
+        if let Some(dpi) = dpi {
+            if dpi > 0 {
+                set_png_dpi(&mut bytes, dpi);
+            }
+        }
+    }
+
     fs::write(&path_obj, &bytes).map_err(|e| format!("Failed to write image file: {e}"))?;
     Ok(())
+}
+
+/// Insert (or replace) a pHYs chunk encoding the given DPI into a PNG byte
+/// stream. Does nothing if the data is not a well-formed PNG.
+fn set_png_dpi(bytes: &mut Vec<u8>, dpi: u32) {
+    const SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
+    // Signature (8) + IHDR length (4) + "IHDR" (4) + IHDR data (13) + CRC (4).
+    const IHDR_END: usize = 8 + 4 + 4 + 13 + 4;
+
+    if bytes.len() < IHDR_END || bytes[..8] != SIGNATURE || &bytes[12..16] != b"IHDR" {
+        return;
+    }
+
+    // If a pHYs chunk already immediately follows IHDR, drop it before inserting.
+    if bytes.len() >= IHDR_END + 8 && &bytes[IHDR_END + 4..IHDR_END + 8] == b"pHYs" {
+        let existing_len = u32::from_be_bytes([
+            bytes[IHDR_END],
+            bytes[IHDR_END + 1],
+            bytes[IHDR_END + 2],
+            bytes[IHDR_END + 3],
+        ]) as usize;
+        let total = 12 + existing_len; // length + type + data + crc
+        bytes.drain(IHDR_END..IHDR_END + total);
+    }
+
+    // Pixels per metre = dpi / 0.0254 (metres per inch), rounded.
+    let ppu = ((dpi as f64) / 0.0254).round() as u32;
+
+    let mut chunk = Vec::with_capacity(21);
+    chunk.extend_from_slice(&9u32.to_be_bytes()); // data length
+    chunk.extend_from_slice(b"pHYs");
+    chunk.extend_from_slice(&ppu.to_be_bytes()); // x pixels per unit
+    chunk.extend_from_slice(&ppu.to_be_bytes()); // y pixels per unit
+    chunk.push(1); // unit specifier: 1 = metre
+    let crc = png_crc32(&chunk[4..]); // CRC over type + data
+    chunk.extend_from_slice(&crc.to_be_bytes());
+
+    let tail = bytes.split_off(IHDR_END);
+    bytes.extend_from_slice(&chunk);
+    bytes.extend_from_slice(&tail);
+}
+
+/// Standard PNG CRC-32 (ISO-HDLC) over the given bytes.
+fn png_crc32(data: &[u8]) -> u32 {
+    let mut crc: u32 = 0xFFFF_FFFF;
+    for &byte in data {
+        crc ^= byte as u32;
+        for _ in 0..8 {
+            if crc & 1 != 0 {
+                crc = (crc >> 1) ^ 0xEDB8_8320;
+            } else {
+                crc >>= 1;
+            }
+        }
+    }
+    crc ^ 0xFFFF_FFFF
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

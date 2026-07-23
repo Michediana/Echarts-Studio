@@ -70,24 +70,31 @@ export default function ChartPreview() {
     }
   }, [t]);
 
+  // Uses CSS "fake" fullscreen (fixed overlay) instead of the native
+  // Fullscreen API, which is unsupported/unreliable in WKWebView on macOS
+  // (Tauri) and silently fails there.
   const handleToggleFullscreen = useCallback(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    if (!document.fullscreenElement) {
-      el.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
-    } else {
-      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
-    }
+    setIsFullscreen((prev) => !prev);
   }, []);
 
+  // Resize the chart after the container switches to/from the fullscreen
+  // overlay, since its dimensions change.
   useEffect(() => {
-    const onFsChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+    const instance = chartRef.current?.getEchartsInstance();
+    if (instance) {
+      instance.resize();
+    }
+  }, [isFullscreen]);
+
+  // Allow exiting fullscreen with Escape.
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsFullscreen(false);
     };
-    document.addEventListener("fullscreenchange", onFsChange);
-    return () => document.removeEventListener("fullscreenchange", onFsChange);
-  }, []);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isFullscreen]);
 
   if (!currentProject) {
     return (
@@ -102,9 +109,10 @@ export default function ChartPreview() {
     <div
       ref={containerRef}
       className={cn(
-        "relative h-full w-full overflow-hidden",
-        "rounded-md border border-border bg-background",
-        isFullscreen && "rounded-none border-0"
+        "relative overflow-hidden bg-background",
+        isFullscreen
+          ? "fixed inset-0 z-50 h-screen w-screen rounded-none border-0"
+          : "h-full w-full rounded-md border border-border"
       )}
     >
       <ChartErrorBoundary
@@ -176,7 +184,6 @@ export default function ChartPreview() {
       <PngExportDialog
         open={pngExportOpen}
         onOpenChange={setPngExportOpen}
-        chartRef={chartRef}
       />
     </div>
   );

@@ -1,5 +1,4 @@
-import { useState, useCallback, type RefObject } from "react";
-import type ReactECharts from "echarts-for-react";
+import { useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,19 +19,18 @@ import {
 import { useT } from "@/lib/i18n/context";
 import { useUIStore } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
+import { resolveOption } from "@/lib/chart/resolveOption";
 
 const DPI_OPTIONS = [72, 96, 150, 300, 600];
 
 interface PngExportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  chartRef: RefObject<ReactECharts | null>;
 }
 
 export default function PngExportDialog({
   open,
   onOpenChange,
-  chartRef,
 }: PngExportDialogProps) {
   const t = useT();
   const theme = useUIStore((s) => s.theme);
@@ -44,8 +42,7 @@ export default function PngExportDialog({
   const [exporting, setExporting] = useState(false);
 
   const handleExport = useCallback(async () => {
-    const instance = chartRef.current?.getEchartsInstance?.();
-    if (!instance) return;
+    if (!currentProject) return;
 
     const w = parseInt(width, 10);
     const h = parseInt(height, 10);
@@ -54,28 +51,56 @@ export default function PngExportDialog({
 
     setExporting(true);
     try {
-      const pixelRatio = d / 96;
+      const option = resolveOption(currentProject);
+      const bg = theme === "dark" ? "#1a1a2e" : "#ffffff";
+      const echartsTheme = theme === "dark" ? "dark" : undefined;
+      const renderer = currentProject.chart?.renderer ?? "canvas";
 
-      const dataUrl = instance.getDataURL({
+      const container = document.createElement("div");
+      container.style.cssText = `width:${w}px;height:${h}px;position:absolute;left:0;top:0;visibility:hidden;pointer-events:none;`;
+      document.body.appendChild(container);
+
+      const echarts = await import("echarts");
+      const offscreen = echarts.init(container, echartsTheme, {
+        width: w,
+        height: h,
+        renderer,
+        useDirtyRect: false,
+        // Snapshot resolution is controlled solely by getDataURL's pixelRatio.
+        // Pin the base ratio to 1 so a HiDPI screen doesn't scale it a second time.
+        devicePixelRatio: 1,
+      });
+
+      // Disable entry animations: getDataURL captures a single frame, so with
+      // animation on the series (bars/lines) would still be at their initial
+      // state (height 0 / not yet drawn), leaving only axes and legend visible.
+      const staticOption = { ...option, animation: false };
+      offscreen.setOption(staticOption, true);
+
+      // Wait until ECharts has finished laying out and painting before capture.
+      await new Promise<void>((resolve) => {
+        let settled = false;
+        const done = () => {
+          if (settled) return;
+          settled = true;
+          resolve();
+        };
+        offscreen.on("finished", done);
+        // Fallback in case "finished" doesn't fire (e.g. empty series).
+        requestAnimationFrame(() => requestAnimationFrame(done));
+      });
+
+      // The image is exactly w × h pixels; DPI is written as PNG metadata
+      // (pHYs chunk) so it only affects the physical print size, not the
+      // pixel dimensions.
+      const dataUrl = offscreen.getDataURL({
         type: "png",
-        pixelRatio,
-        backgroundColor: theme === "dark" ? "#1a1a2e" : "#ffffff",
+        pixelRatio: 1,
+        backgroundColor: bg,
       });
 
-      const img = new Image();
-      img.src = dataUrl;
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error("Failed to load chart image"));
-      });
-
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      ctx.drawImage(img, 0, 0, w, h);
+      offscreen.dispose();
+      container.remove();
 
       const { save } = await import("@tauri-apps/plugin-dialog");
       const defaultName = `${currentProject?.metadata?.name ?? "chart"}.png`;
@@ -89,7 +114,7 @@ export default function PngExportDialog({
       }
 
       const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("export_image", { path: savePath, data: canvas.toDataURL("image/png") });
+      await invoke("export_image", { path: savePath, data: dataUrl, dpi: d });
 
       onOpenChange(false);
     } catch (err) {
@@ -97,7 +122,7 @@ export default function PngExportDialog({
     } finally {
       setExporting(false);
     }
-  }, [chartRef, width, height, dpi, theme, currentProject, onOpenChange]);
+  }, [currentProject, width, height, dpi, theme, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
