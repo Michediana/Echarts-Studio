@@ -6,6 +6,8 @@ use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
+mod menu;
+
 #[derive(Serialize, Deserialize, Default)]
 struct RecentProjects {
     projects: Vec<String>,
@@ -199,6 +201,11 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            let menu = menu::build(app.handle())?;
+            app.set_menu(menu)?;
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             read_project,
             write_project,
