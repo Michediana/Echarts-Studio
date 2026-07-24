@@ -33,7 +33,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: 'npm' # o pnpm/yarn/bun se li usi
+          cache: 'npm'
 
       # Dipendenze Linux necessarie per Tauri e WebKitGTK
       - name: Install dependencies (Ubuntu only)
@@ -56,13 +56,17 @@ jobs:
 
       # Installazione dipendenze frontend (npm, pnpm, etc.)
       - name: Install frontend dependencies
-        run: npm ci # usa 'pnpm install' o 'yarn install' se preferisci
+        run: npm ci
 
       # Esecuzione Build e Creazione Release GitHub
       - name: Build e Pubblica Tauri App
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          # La chiave e' stata generata senza password, ma la variabile deve
+          # comunque esistere: altrimenti il signer resta in attesa di input.
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
           # Ad-hoc signing per macOS: firma i binari senza account/certificati Apple.
           # Evita l'errore "app danneggiata" su Apple Silicon. Ignorato su Windows/Linux.
           APPLE_SIGNING_IDENTITY: '-'
@@ -70,6 +74,6 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'App Release ${{ github.ref_name }}'
           releaseBody: 'Vedi i cambiamenti nella release.'
-          releaseDraft: true # Crea la release come bozza per permetterti di controllarla prima di pubblicarla
+          releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
