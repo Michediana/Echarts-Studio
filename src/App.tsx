@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import AppShell from "@/components/layout/AppShell";
 import { useUIStore } from "@/stores/uiStore";
 import { useProjectStore } from "@/stores/projectStore";
-import { check } from '@tauri-apps/plugin-updater';
-import { relaunch } from '@tauri-apps/plugin-process';
+import { useT } from "@/lib/i18n/context";
+import { runUpdateCheck } from "@/lib/updater";
 
 function applyThemeClass(theme: "light" | "dark") {
   const root = document.documentElement;
@@ -11,20 +11,8 @@ function applyThemeClass(theme: "light" | "dark") {
   root.classList.add(theme);
 }
 
-async function checkForUpdates() {
-  const update = await check();
-  if (!update) return;
-
-  console.log(`Nuovo aggiornamento trovato: ${update.version}`);
-
-  // Scarica e installa i pacchetti
-  await update.downloadAndInstall();
-
-  // Riavvia l'applicazione per applicare le modifiche
-  await relaunch();
-}
-
 export default function App() {
+  const t = useT();
   const theme = useUIStore((s) => s.theme);
   const saveProject = useProjectStore((s) => s.saveProject);
   const createProject = useProjectStore((s) => s.createProject);
@@ -33,11 +21,11 @@ export default function App() {
   const loadRecentProjects = useProjectStore((s) => s.loadRecentProjects);
 
   useEffect(() => {
-    // Fallisce silenziosamente fuori da Tauri (npm run dev) o se l'endpoint
-    // non e' raggiungibile: un update mancato non deve bloccare l'avvio.
-    checkForUpdates().catch((err) => {
-      console.error("Update check failed:", err);
-    });
+    // Silenzioso: fuori da Tauri (npm run dev) o con l'endpoint irraggiungibile
+    // il check fallisce, e non deve disturbare l'avvio.
+    void runUpdateCheck({ silent: true, t });
+    // Volutamente solo all'avvio: un cambio di lingua non deve rifare il check.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

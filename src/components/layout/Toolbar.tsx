@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   FilePlus,
@@ -16,6 +16,7 @@ import {
   Settings,
   BarChart3,
   Globe,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,8 +37,10 @@ import { Switch } from "@/components/ui/switch";
 import { useT } from "@/lib/i18n/context";
 import { useLanguage } from "@/lib/i18n/context";
 import { LANGUAGES } from "@/lib/i18n/translations";
+import { cn } from "@/lib/utils";
 import { useProjectStore } from "@/stores/projectStore";
 import { useUIStore } from "@/stores/uiStore";
+import { runUpdateCheck } from "@/lib/updater";
 import type { SeriesType } from "@/types/project";
 
 const CHART_TYPE_OPTIONS: { value: SeriesType; label: string }[] = [
@@ -53,9 +56,10 @@ interface ToolbarButtonProps {
   label: string;
   onClick?: () => void;
   disabled?: boolean;
+  iconClassName?: string;
 }
 
-function ToolbarButton({ icon: Icon, label, onClick, disabled }: ToolbarButtonProps) {
+function ToolbarButton({ icon: Icon, label, onClick, disabled, iconClassName }: ToolbarButtonProps) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -67,7 +71,7 @@ function ToolbarButton({ icon: Icon, label, onClick, disabled }: ToolbarButtonPr
           disabled={disabled}
           aria-label={label}
         >
-          <Icon className="h-3.5 w-3.5" />
+          <Icon className={cn("h-3.5 w-3.5", iconClassName)} />
         </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom">{label}</TooltipContent>
@@ -158,6 +162,17 @@ export function Toolbar() {
       console.error("Failed to export:", err);
     }
   }, []);
+
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+
+  const handleCheckForUpdates = useCallback(async () => {
+    setIsCheckingUpdate(true);
+    try {
+      await runUpdateCheck({ silent: false, t });
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  }, [t]);
 
   const hasProject = currentProject !== null;
 
@@ -281,6 +296,13 @@ export function Toolbar() {
             icon={Search}
             label={t("toolbar.commandPalette")}
             onClick={openCommandPalette}
+          />
+          <ToolbarButton
+            icon={RefreshCw}
+            label={t("toolbar.checkForUpdates")}
+            onClick={handleCheckForUpdates}
+            disabled={isCheckingUpdate}
+            iconClassName={isCheckingUpdate ? "animate-spin" : undefined}
           />
         </div>
       </div>

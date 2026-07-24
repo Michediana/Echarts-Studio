@@ -23,6 +23,16 @@ type TranslationKeys = {
   "toolbar.exportChartAsImage": string;
   "toolbar.commandPalette": string;
   "toolbar.selectChartType": string;
+  "toolbar.checkForUpdates": string;
+
+  // Updater
+  "updater.checking": string;
+  "updater.upToDate": string;
+  "updater.downloading": string;
+  "updater.downloadingProgress": string;
+  "updater.installing": string;
+  "updater.restarting": string;
+  "updater.failed": string;
 
   // Sidebar
   "sidebar.tabProject": string;
@@ -263,6 +273,16 @@ export const translations: Record<Language, TranslationKeys> = {
     "toolbar.exportChartAsImage": "Export chart as image",
     "toolbar.commandPalette": "Command Palette (⌘K)",
     "toolbar.selectChartType": "Chart type",
+    "toolbar.checkForUpdates": "Check for updates",
+
+    // Updater
+    "updater.checking": "Checking for updates...",
+    "updater.upToDate": "ECharts Studio is up to date (v{version})",
+    "updater.downloading": "Downloading version {version}...",
+    "updater.downloadingProgress": "Downloading version {version}... {percent}%",
+    "updater.installing": "Installing update...",
+    "updater.restarting": "Update installed. Restarting...",
+    "updater.failed": "Update check failed",
 
     // Sidebar
     "sidebar.tabProject": "Project",
@@ -505,6 +525,16 @@ export const translations: Record<Language, TranslationKeys> = {
     "toolbar.exportChartAsImage": "Esporta grafico come immagine",
     "toolbar.commandPalette": "Palette Comandi (⌘K)",
     "toolbar.selectChartType": "Tipo di grafico",
+    "toolbar.checkForUpdates": "Cerca aggiornamenti",
+
+    // Updater
+    "updater.checking": "Ricerca aggiornamenti...",
+    "updater.upToDate": "ECharts Studio è aggiornato (v{version})",
+    "updater.downloading": "Download versione {version} in corso...",
+    "updater.downloadingProgress": "Download versione {version}... {percent}%",
+    "updater.installing": "Installazione aggiornamento...",
+    "updater.restarting": "Aggiornamento installato. Riavvio in corso...",
+    "updater.failed": "Ricerca aggiornamenti non riuscita",
 
     // Sidebar
     "sidebar.tabProject": "Progetto",
